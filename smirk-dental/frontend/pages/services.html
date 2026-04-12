@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Services | Smirk Dental Clinic | Dr. Mehak Gupta</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    .services-hero { padding: 7rem 0 3rem; }
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+    .svc-card {
+      background: white;
+      border-radius: var(--r-lg);
+      padding: 2.2rem 2rem;
+      border: 1px solid rgba(42,175,169,0.1);
+      box-shadow: 0 4px 20px rgba(15,42,56,0.05);
+      transition: var(--t-med);
+      display: flex; gap: 1.5rem; align-items: flex-start;
+    }
+    .svc-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 40px rgba(42,175,169,0.14);
+      border-color: var(--teal-pale);
+    }
+    .svc-icon-wrap {
+      width: 60px; height: 60px; flex-shrink: 0;
+      border-radius: 16px;
+      background: var(--teal-glow);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.7rem;
+      transition: var(--t-med);
+    }
+    .svc-card:hover .svc-icon-wrap {
+      background: linear-gradient(135deg, var(--teal), var(--teal-deep));
+    }
+    .svc-content h3 { font-weight: 700; font-size: 1.05rem; color: var(--navy); margin-bottom: 0.5rem; }
+    .svc-content p  { font-size: 0.875rem; color: var(--grey); line-height: 1.7; margin-bottom: 0.8rem; }
+    .svc-tag-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .svc-tag {
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
+      color: var(--teal); background: var(--teal-glow);
+      padding: 0.22rem 0.65rem; border-radius: var(--r-pill);
+    }
+    .pricing-bar {
+      background: linear-gradient(135deg, var(--navy), #1A4A5A);
+      border-radius: var(--r-xl);
+      padding: 2.5rem;
+      margin-top: 3rem;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+    }
+    .price-item {
+      text-align: center; padding: 1.2rem 1rem;
+      border-right: 1px solid rgba(255,255,255,0.07);
+    }
+    .price-item:last-child { border-right: none; }
+    .price-name { font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-bottom: 0.5rem; }
+    .price-val { font-family: var(--font-display); font-size: 1.6rem; color: var(--gold-light); }
+    .price-note { font-size: 0.7rem; color: rgba(255,255,255,0.3); margin-top: 0.2rem; }
+    @media(max-width:768px){
+      .services-grid { grid-template-columns: 1fr; }
+      .pricing-bar { grid-template-columns: repeat(2,1fr); }
+      .svc-card { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-bg"></div>
+  <nav class="navbar" id="navbar">
+    <div class="navbar-inner">
+      <a href="index.html" class="nav-logo"><span class="dot">✦</span> Smirk <span class="accent">Dental</span></a>
+      <ul class="nav-links" id="navLinks"></ul>
+      <div class="nav-right">
+        <a href="appointment.html" class="btn btn-primary btn-sm">Book Appointment</a>
+        <button class="hamburger" id="hamburger"><i class="fas fa-bars"></i></button>
+      </div>
+    </div>
+  </nav>
+  <div class="mobile-menu" id="mobileMenu"></div>
+
+  <section class="page-hero">
+    <div class="container" style="text-align:center">
+      <span class="section-tag fade-up">Our Services</span>
+      <h1 class="display display-lg text-navy fade-up fade-up-delay-1">Expert Dental Treatments</h1>
+      <p class="fade-up fade-up-delay-2">Comprehensive care from routine checkups to complex aesthetic transformations — all under one roof.</p>
+    </div>
+  </section>
+
+  <section style="padding-bottom:5rem">
+    <div class="container">
+      <div class="services-grid">
+        <div class="svc-card fade-up">
+          <div class="svc-icon-wrap">🦷</div>
+          <div class="svc-content">
+            <h3>Dental X-rays & Diagnosis</h3>
+            <p>State-of-the-art digital X-rays for precise, low-radiation diagnostics. Identify cavities, bone loss, and hidden issues early for the best outcomes.</p>
+            <div class="svc-tag-list">
+              <span class="svc-tag">Digital RVG</span>
+              <span class="svc-tag">OPG</span>
+              <span class="svc-tag">CBCT</span>
+            </div>
+          </div>
+        </div>
+        <div class="svc-card fade-up fade-up-delay-1">
+          <div class="svc-icon-wrap">✨</div>
+          <div class="svc-content">
+            <h3>Aesthetic Dentistry</h3>
+            <p>Transform your smile with carefully crafted cosmetic solutions — teeth whitening, bonding, and complete smile design tailored to your face.</p>
+            <div class="svc-tag-list">
+              <span class="svc-tag">Teeth Whitening</span>
+              <span class="svc-tag">Smile Design</span>
+              <span class="svc-tag">Bonding</span>
+            </div>
+          </div>
+        </div>
+        <div class="svc-card fade-up fade-up-delay-2">
+          <div class="svc-icon-wrap">💎</div>
+          <div class="svc-content">
+            <h3>Laminates & Veneers</h3>
+            <p>Ultra-thin porcelain shells crafted to perfection — fixing chips, stains, and gaps while preserving your natural tooth structure.</p>
+            <div class="svc-tag-list">
+              <span class="svc-tag">Porcelain Veneers</span>
+              <span class="svc-tag">Composite Laminates</span>
+              <span class="svc-tag">E.max</span>
+            </div>
+          </div>
+        </div>
+        <div class="svc-card fade-up fade-up-delay-3">
+          <div class="svc-icon-wrap">🔬</div>
+          <div class="svc-content">
+            <h3>Root Canal Treatment (RCT)</h3>
+            <p>Modern, painless root canal therapy to save your natural tooth. Single or multi-visit options with rotary instruments for faster healing.</p>
+            <div class="svc-tag-list">
+              <span class="svc-tag">Single-visit RCT</span>
+              <span class="svc-tag">Rotary RCT</span>
+              <span class="svc-tag">Re-treatment</span>
+            </div>
+          </div>
+        </div>
+        <div class="svc-card fade-up">
+          <div class="svc-icon-wrap">🏗️</div>
+          <div class="svc-content">
+            <h3>Dental Implants</h3>
+            <p>Permanent, natural-looking tooth replacements. Titanium implants fused with bone for lifelong stability and comfort.</p>
+            <div class="svc-tag-list">
+              <span class="svc-tag">Single Implant</span>
+              <span class="svc-tag">Full Arch</span>
+              <span class="svc-tag">Basal Implants</span>
+            </div>
+          </div>
+        </div>
+        <div class="svc-card fade-up fade-up-delay-1">
+          <div class="svc-icon-wrap">🪥</div>
+          <div class="svc-content">
+            <h3>Scaling & Cleaning</h3>
+            <p>Professional deep cleaning to remove plaque, tartar, and stains — the foundation of a healthy mouth and fresh breath.</p>
+            <div class="svc-tag-list">
+              <span class="svc-tag">Ultrasonic Scaling</span>
+              <span class="svc-tag">Polishing</span>
+              <span class="svc-tag">Air Prophy</span>
+            </div>
+          </div>
+        </div>
+        <div class="svc-card fade-up fade-up-delay-2">
+          <div class="svc-icon-wrap">👑</div>
+          <div class="svc-content">
+            <h3>Crowns & Bridges</h3>
+            <p>Precision-crafted zirconia and PFM crowns to restore damaged teeth with natural aesthetics and exceptional durability.</p>
+            <div class="svc-tag-list">
+              <span class="svc-tag">Zirconia Crown</span>
+              <span class="svc-tag">PFM Bridge</span>
+              <span class="svc-tag">All-Ceramic</span>
+            </div>
+          </div>
+        </div>
+        <div class="svc-card fade-up fade-up-delay-3">
+          <div class="svc-icon-wrap">😁</div>
+          <div class="svc-content">
+            <h3>Orthodontics & Aligners</h3>
+            <p>Straighten your smile discreetly with clear aligners or traditional braces — customised treatment plans for all ages.</p>
+            <div class="svc-tag-list">
+              <span class="svc-tag">Clear Aligners</span>
+              <span class="svc-tag">Metal Braces</span>
+              <span class="svc-tag">Ceramic Braces</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Indicative Pricing -->
+      <div class="pricing-bar fade-up">
+        <div class="price-item">
+          <div class="price-name">Consultation</div>
+          <div class="price-val">₹500</div>
+          <div class="price-note">Per visit</div>
+        </div>
+        <div class="price-item">
+          <div class="price-name">Scaling</div>
+          <div class="price-val">₹800+</div>
+          <div class="price-note">Starting price</div>
+        </div>
+        <div class="price-item">
+          <div class="price-name">RCT</div>
+          <div class="price-val">₹3,500+</div>
+          <div class="price-note">Per tooth</div>
+        </div>
+        <div class="price-item">
+          <div class="price-name">Implant</div>
+          <div class="price-val">₹25,000+</div>
+          <div class="price-note">Complete procedure</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:2.5rem" class="fade-up">
+        <a href="appointment.html" class="btn btn-primary btn-lg">Book a Consultation — ₹500</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom" style="border-top:none;padding-top:0">
+        <span>© 2025 Smirk Dental Clinic & Implant Centre</span>
+        <a href="https://g.page/r/REPLACE_WITH_GOOGLE_PLACE_ID/review" target="_blank" class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
+      </div>
+    </div>
+  </footer>
+  <a href="appointment.html" class="btn btn-primary floating-cta"><i class="fas fa-calendar-check"></i> Book Now</a>
+  <script src="js/shared.js"></script>
+  <script>window.injectNav('services.html');</script>
+</body>
+</html>

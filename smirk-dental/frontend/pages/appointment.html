@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Appointment | Smirk Dental Clinic</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    .appt-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.7fr;
+      gap: 2.5rem;
+      align-items: start;
+      padding-bottom: 5rem;
+    }
+    /* Info sidebar */
+    .appt-sidebar { position: sticky; top: 90px; }
+    .info-card {
+      background: white;
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(15,42,56,0.07);
+      border: 1px solid rgba(42,175,169,0.1);
+      margin-bottom: 1.2rem;
+    }
+    .info-card-header {
+      background: linear-gradient(135deg, var(--navy), #1A4A5A);
+      padding: 1.5rem 1.5rem 1.2rem;
+    }
+    .fee-display {
+      text-align: center; padding: 1.5rem;
+      border-bottom: 1px solid rgba(42,175,169,0.1);
+    }
+    .fee-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--grey); }
+    .fee-amount { font-family: var(--font-display); font-size: 2.8rem; color: var(--gold); line-height: 1; margin: 0.2rem 0; }
+    .fee-note { font-size: 0.78rem; color: var(--grey); }
+    .hours-list { padding: 1.2rem 1.5rem; }
+    .hour-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(42,175,169,0.06); font-size: 0.85rem; }
+    .hour-row:last-child { border: none; }
+    .hour-time { color: var(--teal); font-weight: 600; }
+    .address-card {
+      background: white;
+      border-radius: var(--r-lg);
+      padding: 1.5rem;
+      border: 1px solid rgba(42,175,169,0.1);
+      box-shadow: 0 4px 24px rgba(15,42,56,0.05);
+      font-size: 0.85rem; color: var(--grey); line-height: 1.65;
+    }
+    .address-title { font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.9rem; }
+
+    /* Booking form */
+    .booking-card {
+      background: white;
+      border-radius: var(--r-xl);
+      padding: 2.5rem;
+      box-shadow: 0 6px 30px rgba(15,42,56,0.07);
+      border: 1px solid rgba(42,175,169,0.1);
+    }
+    .booking-title { font-family: var(--font-display); font-size: 1.8rem; color: var(--navy); margin-bottom: 0.4rem; }
+    .booking-sub { font-size: 0.875rem; color: var(--grey); margin-bottom: 2rem; }
+    .step-indicator {
+      display: flex; gap: 0.5rem; align-items: center;
+      margin-bottom: 2rem;
+    }
+    .step {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.78rem; font-weight: 600;
+      color: var(--light-grey);
+    }
+    .step.active { color: var(--teal); }
+    .step.done { color: var(--teal-deep); }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: rgba(42,175,169,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem;
+    }
+    .step.active .step-num { background: var(--teal); color: white; }
+    .step.done .step-num { background: var(--teal-deep); color: white; }
+    .step-line { flex: 1; height: 1px; background: rgba(42,175,169,0.15); }
+
+    /* Date picker */
+    .date-picker-row {
+      display: flex; gap: 0.6rem; flex-wrap: wrap;
+      margin-top: 0.6rem;
+    }
+    .date-btn {
+      flex-shrink: 0;
+      border: 1.5px solid rgba(42,175,169,0.2);
+      border-radius: var(--r-md);
+      padding: 0.7rem 0.6rem;
+      text-align: center; cursor: pointer;
+      transition: var(--t-fast);
+      background: white; min-width: 56px;
+      font-family: inherit;
+    }
+    .date-btn:hover:not(.disabled) { border-color: var(--teal); background: var(--teal-glow); }
+    .date-btn.selected { border-color: var(--teal); background: var(--teal); color: white; }
+    .date-btn.disabled { opacity: 0.35; cursor: not-allowed; background: var(--snow); }
+    .date-day { font-size: 0.62rem; color: inherit; opacity: 0.7; display: block; margin-bottom: 2px; }
+    .date-num { font-size: 1rem; font-weight: 700; display: block; }
+    .date-month { font-size: 0.6rem; opacity: 0.65; display: block; }
+
+    /* Time slots */
+    .slots-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.6rem;
+      margin-top: 0.6rem;
+    }
+    .slot-btn {
+      border: 1.5px solid rgba(42,175,169,0.2);
+      border-radius: var(--r-sm);
+      padding: 0.6rem 0.4rem;
+      text-align: center; cursor: pointer;
+      font-size: 0.78rem; font-weight: 500;
+      transition: var(--t-fast);
+      background: white;
+      font-family: inherit;
+    }
+    .slot-btn:hover:not(.booked):not(.disabled) { border-color: var(--teal); background: var(--teal-glow); color: var(--teal); }
+    .slot-btn.selected { border-color: var(--teal); background: var(--teal); color: white; }
+    .slot-btn.booked  { background: var(--snow); color: var(--light-grey); cursor: not-allowed; text-decoration: line-through; border-color: transparent; }
+    .slot-btn.loading { opacity: 0.5; pointer-events: none; }
+
+    /* Form grid */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-section { margin-top: 1.6rem; }
+    .form-section-title { font-weight: 700; font-size: 0.85rem; color: var(--navy); margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem; }
+
+    /* Loading skeleton for slots */
+    .slot-skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      border-radius: var(--r-sm); height: 40px;
+    }
+    @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+    /* Success state */
+    .success-state {
+      text-align: center; padding: 3rem 2rem;
+      display: none;
+    }
+    .success-state.show { display: block; }
+    .success-icon { font-size: 4rem; margin-bottom: 1rem; animation: successPop 0.5s cubic-bezier(0.17,0.89,0.32,1.49) both; }
+    @keyframes successPop { from { transform: scale(0); } to { transform: scale(1); } }
+    .success-state h3 { font-family: var(--font-display); font-size: 2rem; color: var(--navy); margin-bottom: 0.5rem; }
+    .booking-form { transition: opacity 0.3s; }
+    .booking-form.hiding { opacity: 0; pointer-events: none; }
+
+    @media(max-width:900px) {
+      .appt-layout { grid-template-columns: 1fr; }
+      .appt-sidebar { position: static; }
+      .slots-grid { grid-template-columns: repeat(3,1fr); }
+    }
+    @media(max-width:500px) {
+      .form-row { grid-template-columns: 1fr; }
+      .slots-grid { grid-template-columns: repeat(2,1fr); }
+      .booking-card { padding: 1.5rem 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-bg"></div>
+  <nav class="navbar" id="navbar">
+    <div class="navbar-inner">
+      <a href="../index.html" class="nav-logo"><span class="dot">✦</span> Smirk <span class="accent">Dental</span></a>
+      <ul class="nav-links" id="navLinks"></ul>
+      <div class="nav-right">
+        <button class="hamburger" id="hamburger"><i class="fas fa-bars"></i></button>
+      </div>
+    </div>
+  </nav>
+  <div class="mobile-menu" id="mobileMenu"></div>
+
+  <section class="page-hero" style="padding-bottom:1rem">
+    <div class="container" style="text-align:center">
+      <span class="section-tag fade-up"><i class="fas fa-calendar-check"></i> Book Appointment</span>
+      <h1 class="display display-lg text-navy fade-up fade-up-delay-1">Schedule Your Visit</h1>
+      <p class="fade-up fade-up-delay-2">Pick a date and time that works for you. Instant confirmation, zero hassle.</p>
+    </div>
+  </section>
+
+  <div class="container appt-layout">
+    <!-- ── SIDEBAR ── -->
+    <div class="appt-sidebar fade-up">
+      <div class="info-card">
+        <div class="fee-display">
+          <div class="fee-label">Consultation Fee</div>
+          <div class="fee-amount">₹500</div>
+          <div class="fee-note">Per visit · All cases discussed</div>
+        </div>
+        <div class="hours-list">
+          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--grey);margin-bottom:0.5rem;font-weight:600">Clinic Hours</div>
+          <div class="hour-row"><span>Monday – Saturday</span><span class="hour-time">9:00 AM</span></div>
+          <div class="hour-row"><span></span><span class="hour-time">1:30 PM · Break</span></div>
+          <div class="hour-row"><span></span><span class="hour-time">1:45 PM</span></div>
+          <div class="hour-row"><span></span><span class="hour-time">7:00 PM</span></div>
+          <div class="hour-row" style="opacity:0.45"><span>Sunday</span><span>Closed</span></div>
+        </div>
+      </div>
+      <div class="address-card">
+        <div class="address-title"><i class="fas fa-map-marker-alt" style="color:var(--teal)"></i> Location</div>
+        C6/7, 6096, Ground Floor, Entry from Gate No. 5 of C-6<br>
+        <strong>Opposite Delhi Public School (DPS)</strong><br>
+        Vasant Kunj, New Delhi – 110070
+        <div style="margin-top:1rem">
+          <a href="https://www.google.com/maps/search/Smirk+Dental+Clinic+Vasant+Kunj" target="_blank" class="btn btn-primary btn-sm" style="width:100%;justify-content:center">
+            <i class="fas fa-directions"></i> Get Directions
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BOOKING FORM ── -->
+    <div class="fade-up fade-up-delay-1">
+      <div class="booking-card">
+        <!-- Step indicator -->
+        <div class="step-indicator">
+          <div class="step done" id="step1"><div class="step-num">1</div> <span>Date</span></div>
+          <div class="step-line"></div>
+          <div class="step active" id="step2"><div class="step-num">2</div> <span>Time</span></div>
+          <div class="step-line"></div>
+          <div class="step" id="step3"><div class="step-num">3</div> <span>Details</span></div>
+        </div>
+
+        <!-- Main form -->
+        <div class="booking-form" id="bookingForm">
+          <div class="booking-title">Book an Appointment</div>
+          <div class="booking-sub">All slots are 30 minutes. Arrive 5 minutes early.</div>
+
+          <!-- Date selection -->
+          <div class="form-section">
+            <div class="form-section-title"><i class="fas fa-calendar" style="color:var(--teal)"></i> Select Date</div>
+            <div class="date-picker-row" id="datePicker"></div>
+          </div>
+
+          <!-- Time slots -->
+          <div class="form-section">
+            <div class="form-section-title"><i class="fas fa-clock" style="color:var(--teal)"></i> Select Time Slot</div>
+            <div class="slots-grid" id="slotsGrid">
+              <div class="slot-skeleton"></div>
+              <div class="slot-skeleton"></div>
+              <div class="slot-skeleton"></div>
+              <div class="slot-skeleton"></div>
+            </div>
+            <div id="slotsNote" style="font-size:0.75rem;color:var(--grey);margin-top:0.6rem;display:none">
+              <span style="background:#F5F5F5;border-radius:4px;padding:0.15rem 0.5rem;margin-right:0.5rem;font-size:0.7rem;text-decoration:line-through">10:30</span> = Already booked
+            </div>
+          </div>
+
+          <!-- Patient details -->
+          <div class="form-section">
+            <div class="form-section-title"><i class="fas fa-user" style="color:var(--teal)"></i> Your Details</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Full Name *</label>
+                <input class="form-input" type="text" id="patientName" placeholder="Priya Sharma" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone Number *</label>
+                <input class="form-input" type="tel" id="patientPhone" placeholder="+91 98765 43210" required />
+              </div>
+            </div>
+          </div>
+
+          <div id="formError" style="display:none;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;border-radius:var(--r-sm);padding:0.8rem 1rem;font-size:0.85rem;margin-top:1rem"></div>
+
+          <button class="btn btn-primary btn-lg" id="submitBtn" style="width:100%;justify-content:center;margin-top:1.5rem" onclick="submitBooking()">
+            <i class="fas fa-calendar-check"></i> Confirm Appointment
+          </button>
+          <div style="text-align:center;font-size:0.75rem;color:var(--grey);margin-top:0.8rem">
+            <i class="fas fa-lock" style="color:var(--teal)"></i> Your details are secure and private
+          </div>
+        </div>
+
+        <!-- Success state -->
+        <div class="success-state" id="successState">
+          <div class="success-icon">🎉</div>
+          <h3>Appointment Confirmed!</h3>
+          <p style="color:var(--grey);margin-bottom:1.5rem;font-size:0.95rem">We look forward to seeing you at Smirk Dental Clinic.</p>
+          <div id="confirmDetails" style="background:var(--teal-glow);border-radius:var(--r-md);padding:1.2rem;text-align:left;margin-bottom:1.5rem;font-size:0.875rem"></div>
+          <a href="../index.html" class="btn btn-secondary">Back to Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom" style="border-top:none;padding-top:0">
+        <span>© 2025 Smirk Dental Clinic & Implant Centre</span>
+        <a href="https://g.page/r/REPLACE_WITH_GOOGLE_PLACE_ID/review" target="_blank" class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/shared.js"></script>
+  <script>
+    // ── CONFIG ──
+    // Change this to your deployed backend URL
+    const API_BASE = window.location.hostname === 'localhost'
+      ? 'http://localhost:5000'
+      : 'https://YOUR_BACKEND_URL_HERE';
+
+    const ALL_SLOTS = [
+      '09:00 AM','09:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
+      '12:00 PM','12:30 PM','01:00 PM',
+      '01:45 PM','02:15 PM','02:45 PM','03:15 PM','03:45 PM',
+      '04:15 PM','04:45 PM','05:15 PM','05:45 PM','06:15 PM','06:30 PM'
+    ];
+
+    let selectedDate = null;
+    let selectedTime = null;
+    let bookedSlots  = [];
+
+    // ── BUILD DATE PICKER ──
+    function buildDatePicker() {
+      const container = document.getElementById('datePicker');
+      container.innerHTML = '';
+      const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const today = new Date();
+
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        if (d.getDay() === 0) continue; // Skip Sundays
+
+        const btn = document.createElement('button');
+        btn.className = 'date-btn';
+        btn.type = 'button';
+        btn.innerHTML = `
+          <span class="date-day">${days[d.getDay()]}</span>
+          <span class="date-num">${d.getDate()}</span>
+          <span class="date-month">${months[d.getMonth()]}</span>
+        `;
+        const dateStr = d.toISOString().split('T')[0];
+        btn.dataset.date = dateStr;
+
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          selectedDate = dateStr;
+          selectedTime = null;
+          loadSlots(dateStr);
+        });
+
+        // Auto-select first available
+        if (i === 0 && !selectedDate) {
+          btn.classList.add('selected');
+          selectedDate = dateStr;
+          setTimeout(() => loadSlots(dateStr), 100);
+        }
+        container.appendChild(btn);
+      }
+    }
+
+    // ── LOAD SLOTS FROM API ──
+    async function loadSlots(date) {
+      const grid = document.getElementById('slotsGrid');
+      const note = document.getElementById('slotsNote');
+      grid.innerHTML = Array(4).fill('<div class="slot-skeleton"></div>').join('');
+      note.style.display = 'none';
+
+      try {
+        const res = await fetch(`${API_BASE}/appointments?date=${date}`);
+        const data = await res.json();
+        bookedSlots = data.bookedSlots || [];
+      } catch {
+        bookedSlots = [];
+        // API not available — show all slots
+      }
+
+      renderSlots();
+      note.style.display = bookedSlots.length ? 'block' : 'none';
+    }
+
+    function renderSlots() {
+      const grid = document.getElementById('slotsGrid');
+      grid.innerHTML = '';
+      ALL_SLOTS.forEach(time => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'slot-btn';
+        btn.textContent = time;
+
+        if (bookedSlots.includes(time)) {
+          btn.classList.add('booked');
+          btn.disabled = true;
+          btn.title = 'Already booked';
+        } else {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedTime = time;
+          });
+        }
+        grid.appendChild(btn);
+      });
+    }
+
+    // ── SUBMIT BOOKING ──
+    async function submitBooking() {
+      const name  = document.getElementById('patientName').value.trim();
+      const phone = document.getElementById('patientPhone').value.trim();
+      const errEl = document.getElementById('formError');
+      errEl.style.display = 'none';
+
+      if (!selectedDate) { showErr('Please select a date.'); return; }
+      if (!selectedTime) { showErr('Please select a time slot.'); return; }
+      if (!name)         { showErr('Please enter your full name.'); return; }
+      if (!phone || !/^[\d\s\+\-]{8,15}$/.test(phone)) { showErr('Please enter a valid phone number.'); return; }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming...';
+
+      try {
+        const res = await fetch(`${API_BASE}/appointments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, date: selectedDate, time: selectedTime })
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message || 'Booking failed');
+
+        // Success
+        document.getElementById('bookingForm').classList.add('hiding');
+        setTimeout(() => {
+          document.getElementById('bookingForm').style.display = 'none';
+          const s = document.getElementById('successState');
+          s.classList.add('show');
+          document.getElementById('confirmDetails').innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:0.5rem">
+              <div><strong>👤 Patient:</strong> ${name}</div>
+              <div><strong>📅 Date:</strong> ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+              <div><strong>🕐 Time:</strong> ${selectedTime}</div>
+              <div><strong>📍 Location:</strong> Smirk Dental Clinic, Vasant Kunj</div>
+            </div>
+          `;
+        }, 300);
+      } catch (err) {
+        showErr(err.message || 'Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Appointment';
+      }
+    }
+
+    function showErr(msg) {
+      const el = document.getElementById('formError');
+      el.textContent = '⚠ ' + msg;
+      el.style.display = 'block';
+      el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+
+    // ── INIT ──
+    window.injectNav('appointment.html');
+    buildDatePicker();
+  </script>
+</body>
+</html>
