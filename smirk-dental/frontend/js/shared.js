@@ -29,8 +29,10 @@
 (function () {
   const path = location.pathname.split('/').pop() || 'index.html';
   document.querySelectorAll('.nav-links a, .mobile-menu a').forEach(a => {
-    const href = a.getAttribute('href')?.split('/').pop();
-    if (href === path) a.classList.add('active');
+    const href = a.getAttribute('href');
+    if (!href) return;
+    const cleanHref = href.split('/').pop();
+    if (cleanHref === path) a.classList.add('active');
   });
 })();
 
@@ -87,13 +89,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── NAVBAR HTML INJECTOR ──
 // (Called inline in each page after DOM ready)
 window.injectNav = function (activePage) {
+  const isInPages = window.location.pathname.includes('/pages/');
+  const base = isInPages ? '' : 'pages/';
+  const homeBase = isInPages ? '../' : '';
   const pages = [
-    { href: 'index.html',       label: 'Home' },
-    { href: 'services.html',    label: 'Services' },
-    { href: 'gallery.html',     label: 'Gallery' },
-    { href: 'doctor.html',      label: 'Doctor' },
-    { href: 'appointment.html', label: 'Appointment' },
-    { href: 'contact.html',     label: 'Contact' },
+    { href: homeBase + 'index.html',       label: 'Home' },
+    { href: base + 'services.html',        label: 'Services' },
+    { href: base + 'gallery.html',         label: 'Gallery' },
+    { href: base + 'doctor.html',          label: 'Doctor' },
+    { href: base + 'appointment.html',     label: 'Appointment' },
+    { href: base + 'contact.html',         label: 'Contact' }
   ];
   const links = pages.map(p =>
     `<li><a href="${p.href}" ${p.href === activePage ? 'class="active"' : ''}>${p.label}</a></li>`
