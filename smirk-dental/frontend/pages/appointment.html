@@ -195,8 +195,8 @@
         <div class="hours-list">
           <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--grey);margin-bottom:0.5rem;font-weight:600">Clinic Hours</div>
           <div class="hour-row"><span>Monday – Saturday</span><span class="hour-time">9:00 AM</span></div>
-          <div class="hour-row"><span></span><span class="hour-time">1:30 PM · Break</span></div>
-          <div class="hour-row"><span></span><span class="hour-time">1:45 PM</span></div>
+          <div class="hour-row"><span></span><span class="hour-time">2:00 PM · Break</span></div>
+          <div class="hour-row"><span></span><span class="hour-time">3:00 PM</span></div>
           <div class="hour-row"><span></span><span class="hour-time">7:00 PM</span></div>
           <div class="hour-row" style="opacity:0.45"><span>Sunday</span><span>Closed</span></div>
         </div>
@@ -302,14 +302,11 @@
     // ── CONFIG ──
     // Change this to your deployed backend URL
     const API_BASE = window.location.hostname === 'localhost'
-      ? 'http://localhost:5000'
+      ? 'http://localhost:5001'
       : 'https://YOUR_BACKEND_URL_HERE';
 
     const ALL_SLOTS = [
-      '09:00 AM','09:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
-      '12:00 PM','12:30 PM','01:00 PM',
-      '01:45 PM','02:15 PM','02:45 PM','03:15 PM','03:45 PM',
-      '04:15 PM','04:45 PM','05:15 PM','05:45 PM','06:15 PM','06:30 PM'
+      '09:00 AM','09:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','01:00 PM','01:30 PM','03:00 PM','03:30 PM','04:00 PM','04:30 PM','05:00 PM','05:30 PM','06:00 PM','06:30 PM'
     ];
 
     let selectedDate = null;
@@ -458,7 +455,7 @@
     }
 
     // ── INIT ──
-    window.injectNav('../index.html');
+    window.injectNav();
     buildDatePicker();
   </script>
 </body>

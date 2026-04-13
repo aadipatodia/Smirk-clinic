@@ -15,7 +15,9 @@ const path         = require('path');
 const appointmentsRouter = require('./routes/appointments');
 
 const app  = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
+
+console.log("ENV:", process.env.MONGODB_URI);
 
 // ── SECURITY MIDDLEWARE ──
 app.use(helmet({
@@ -65,9 +67,12 @@ app.use('/api/appointments', bookingLimiter);  // applied only to POST via POST 
 // ── MONGODB CONNECTION ──
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/smirk_dental', {
-      serverSelectionTimeoutMS: 5000,
-    });
+    const conn = await mongoose.connect(
+      process.env.MONGODB_URI || 'mongodb://localhost:27017/smirk_dental',
+      {
+        serverSelectionTimeoutMS: 5000,
+      }
+    );
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (err) {
     console.error('❌ MongoDB connection failed:', err.message);
