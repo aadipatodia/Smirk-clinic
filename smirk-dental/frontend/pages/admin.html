@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin | Smirk Dental</title>
+    <link rel="stylesheet" href="../css/style.css">
+
+    <style>
+        .admin-container {
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 20px 30px;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .admin-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .appt-row {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr auto;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .appt-row.header {
+            font-weight: bold;
+            background: #f9f9f9;
+        }
+
+        .status {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .confirmed {
+            background: #E6FFFA;
+            color: #0F766E;
+        }
+
+        .cancelled {
+            background: #FEF2F2;
+            color: #B91C1C;
+        }
+
+        .login-box {
+            max-width: 400px;
+            margin: 150px auto;
+            padding: 30px;
+            text-align: center;
+            background: white;
+            border-radius: var(--r-lg);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+
+<body style="background:#f4f7fb;">
+
+    <div id="loginScreen" class="login-box">
+        <h2>Admin Login</h2>
+        <input type="password" id="adminPass" placeholder="Enter password" class="form-input" style="margin:15px 0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:0.85rem;">
+            <input type="checkbox" id="rememberMe">
+            <label for="rememberMe">Stay logged in on this device</label>
+        </div>
+        <button class="btn btn-primary" onclick="login()">Login</button>
+    </div>
+
+    <div id="adminPanel" style="display:none">
+        <div class="admin-container">
+            <div class="admin-header">
+                <h2>🦷 Appointments</h2>
+
+                <div style="display:flex;gap:10px;align-items:center;">
+
+                    <!-- 🔴 HOME BUTTON -->
+                    <a href="../index.html" class="btn btn-sm btn-secondary">
+                        Home
+                    </a>
+
+                    <!-- 🔴 LOGOUT BUTTON -->
+                    <button class="btn btn-sm btn-primary" onclick="logout()">
+                        Logout
+                    </button>
+
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:20px;">
+
+                <div class="admin-card" style="padding:25px;">
+                    <div style="font-size:0.8rem;color:gray;">Today</div>
+                    <div id="statToday" style="font-size:1.8rem;font-weight:700;">0</div>
+                </div>
+
+                <div class="admin-card">
+                    <div style="font-size:0.8rem;color:gray;">Total</div>
+                    <div id="statTotal" style="font-size:1.8rem;font-weight:700;">0</div>
+                </div>
+
+                <div class="admin-card">
+                    <div style="font-size:0.8rem;color:gray;">Cancelled</div>
+                    <div id="statCancelled" style="font-size:1.8rem;font-weight:700;">0</div>
+                </div>
+
+            </div>
+
+            <div style="margin-bottom:15px;display:flex;gap:10px;">
+                <button class="btn btn-sm btn-primary" onclick="setActive(this);filterData('all')">All</button>
+                <button class="btn btn-sm btn-secondary" onclick="setActive(this);filterData('today')">Today</button>
+                <button class="btn btn-sm btn-secondary"
+                    onclick="setActive(this);filterData('upcoming')">Upcoming</button>
+            </div>
+
+            <div class="admin-card">
+                <div class="appt-row header">
+                    <div>Name</div>
+                    <div>Phone</div>
+                    <div>Date</div>
+                    <div>Time</div>
+                    <div>Status</div>
+                    <div>Action</div>
+                </div>
+
+                <div id="appointmentsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:5001';
+        const ADMIN_PASSWORD = "smirk123"; // 🔴 CHANGE THIS
+
+        function login() {
+            const pass = document.getElementById('adminPass').value;
+            const remember = document.getElementById('rememberMe').checked;
+
+            if (pass === ADMIN_PASSWORD) {
+
+                if (remember) {
+                    localStorage.setItem('adminAuth', 'true'); // persistent
+                } else {
+                    sessionStorage.setItem('adminAuth', 'true'); // only current tab
+                }
+
+                showAdmin();
+
+            } else {
+                alert("Wrong password");
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminAuth');
+            sessionStorage.removeItem('adminAuth');
+
+            // 🔴 REDIRECT TO HOME PAGE
+            window.location.href = "../index.html";
+        }
+
+        function showAdmin() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+            loadAppointments();
+        }
+
+        let ALL_APPOINTMENTS = [];
+
+        async function loadAppointments() {
+            const res = await fetch(`${API}/appointments/all`);
+            const data = await res.json();
+
+            ALL_APPOINTMENTS = data.appointments;
+
+            updateStats(ALL_APPOINTMENTS);
+            renderAppointments(ALL_APPOINTMENTS);
+        }
+
+        function updateStats(data) {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+
+            const today = data.filter(a => a.date === todayStr);
+            const cancelled = 0; // no longer used
+
+            document.getElementById('statToday').textContent = today.length;
+            document.getElementById('statTotal').textContent = data.length;
+            document.getElementById('statCancelled').textContent = cancelled.length;
+        }
+
+        function renderAppointments(data) {
+            const container = document.getElementById('appointmentsList');
+
+            if (!data.length) {
+                container.innerHTML = `
+            <div style="padding:30px;text-align:center;color:gray;">
+                <div style="font-size:2rem;margin-bottom:10px;">📭</div>
+                <div>No appointments found</div>
+            </div>
+        `;
+                return;
+            }
+
+            container.innerHTML = data.map(a => `
+        <div class="appt-row" style="border-radius:10px;margin-bottom:10px;background:white;box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+            <div><strong>${a.name}</strong></div>
+            <div>${a.phone}</div>
+            <div>${a.date}</div>
+            <div>${a.time}</div>
+            <div>
+                <span class="status confirmed">
+                    confirmed
+                </span>
+            </div>
+            <div style="display:flex;gap:6px;">
+                ${true
+                    ? `
+                      <button class="btn btn-sm btn-secondary" onclick="reschedule('${a._id}')">Reschedule</button>
+                      <button class="btn btn-sm btn-primary" onclick="cancel('${a._id}')">Cancel</button>
+                      `
+                    : ''
+                }
+            </div>
+        </div>
+        `).join('');
+        }
+
+        function filterData(type) {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+
+            let filtered = [];
+
+            if (type === 'today') {
+                filtered = ALL_APPOINTMENTS.filter(a => a.date === todayStr);
+            }
+            else if (type === 'upcoming') {
+                filtered = ALL_APPOINTMENTS.filter(a => a.date > todayStr);
+            }
+            else {
+                filtered = ALL_APPOINTMENTS;
+            }
+
+            renderAppointments(filtered);
+        }
+
+        function setActive(btn) {
+            document.querySelectorAll('.btn-sm').forEach(b => {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-secondary');
+            });
+
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+        }
+
+        async function cancel(id) {
+            await fetch(`${API}/appointments/${id}`, { method: 'DELETE' });
+
+            loadAppointments(); // already there ✔
+
+            showToast("Cancelled successfully ❌");
+        }
+
+        async function reschedule(id) {
+            // Save appointment ID temporarily
+            localStorage.setItem('rescheduleId', id);
+
+            // Redirect to booking page
+            window.location.href = "../pages/appointment.html?reschedule=true";
+        }
+
+        // Auto login check
+        if (
+            localStorage.getItem('adminAuth') === 'true' ||
+            sessionStorage.getItem('adminAuth') === 'true'
+        ) {
+            showAdmin();
+        }
+
+        loadAppointments();
+    </script>
+
+</body>
+
+</html>

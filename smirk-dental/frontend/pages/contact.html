@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,51 +15,162 @@
       padding-bottom: 5rem;
       align-items: start;
     }
-    .map-wrap { border-radius: var(--r-xl); overflow: hidden; box-shadow: 0 10px 40px rgba(15,42,56,0.1); }
-    .map-wrap iframe { width:100%; height:380px; border:none; display:block; }
-    .info-block { margin-top: 1.5rem; display:flex; flex-direction:column; gap:0.8rem; }
-    .info-item {
-      display:flex; align-items:flex-start; gap:1rem;
-      background:white; border-radius:var(--r-md); padding:1.1rem 1.2rem;
-      border:1px solid rgba(42,175,169,0.1);
-      box-shadow:0 2px 12px rgba(15,42,56,0.04);
+
+    .map-wrap {
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(15, 42, 56, 0.1);
     }
-    .info-icon { font-size:1.3rem; width:36px; flex-shrink:0; margin-top:2px; }
-    .info-text-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--grey); margin-bottom:0.2rem; font-weight:600; }
-    .info-text-val { font-size:0.875rem; color:var(--slate); line-height:1.6; }
+
+    .map-wrap iframe {
+      width: 100%;
+      height: 380px;
+      border: none;
+      display: block;
+    }
+
+    .info-block {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      background: white;
+      border-radius: var(--r-md);
+      padding: 1.1rem 1.2rem;
+      border: 1px solid rgba(42, 175, 169, 0.1);
+      box-shadow: 0 2px 12px rgba(15, 42, 56, 0.04);
+    }
+
+    .info-icon {
+      font-size: 1.3rem;
+      width: 36px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .info-text-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--grey);
+      margin-bottom: 0.2rem;
+      font-weight: 600;
+    }
+
+    .info-text-val {
+      font-size: 0.875rem;
+      color: var(--slate);
+      line-height: 1.6;
+    }
 
     /* Intake form */
     .intake-card {
-      background:white; border-radius:var(--r-xl); padding:2.5rem;
-      box-shadow:0 6px 30px rgba(15,42,56,0.07);
-      border:1px solid rgba(42,175,169,0.1);
+      background: white;
+      border-radius: var(--r-xl);
+      padding: 2.5rem;
+      box-shadow: 0 6px 30px rgba(15, 42, 56, 0.07);
+      border: 1px solid rgba(42, 175, 169, 0.1);
     }
-    .intake-title { font-family:var(--font-display); font-size:1.8rem; color:var(--navy); margin-bottom:0.3rem; }
-    .intake-sub { font-size:0.85rem; color:var(--grey); margin-bottom:2rem; }
-    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+
+    .intake-title {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      color: var(--navy);
+      margin-bottom: 0.3rem;
+    }
+
+    .intake-sub {
+      font-size: 0.85rem;
+      color: var(--grey);
+      margin-bottom: 2rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
     .privacy-note {
-      font-size:0.75rem; color:var(--grey);
-      background:rgba(42,175,169,0.05); border-radius:8px; padding:0.7rem 1rem;
-      margin-top:1rem;
-      border-left:3px solid var(--teal-pale);
+      font-size: 0.75rem;
+      color: var(--grey);
+      background: rgba(42, 175, 169, 0.05);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      margin-top: 1rem;
+      border-left: 3px solid var(--teal-pale);
     }
+
     .directions-hero {
-      background:linear-gradient(135deg,var(--navy),#1A4A5A);
-      border-radius:var(--r-xl); padding:2rem 2rem 1.5rem;
-      color:white; margin-top:1.5rem;
+      background: linear-gradient(135deg, var(--navy), #1A4A5A);
+      border-radius: var(--r-xl);
+      padding: 2rem 2rem 1.5rem;
+      color: white;
+      margin-top: 1.5rem;
     }
+
     .landmark-badge {
-      display:inline-flex; align-items:center; gap:0.5rem;
-      background:rgba(201,148,58,0.2); border:1px solid rgba(201,148,58,0.35);
-      color:var(--gold-light); padding:0.4rem 1rem; border-radius:var(--r-pill);
-      font-size:0.78rem; font-weight:600; margin-bottom:1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(201, 148, 58, 0.2);
+      border: 1px solid rgba(201, 148, 58, 0.35);
+      color: var(--gold-light);
+      padding: 0.4rem 1rem;
+      border-radius: var(--r-pill);
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
     }
-    @media(max-width:900px){
-      .contact-layout { grid-template-columns:1fr; }
-      .form-row { grid-template-columns:1fr; }
+
+    @media(max-width:900px) {
+      .contact-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ⭐ Floating Google Review Button */
+    .floating-review {
+      position: fixed;
+      bottom: 90px;
+      right: 30px;
+      z-index: 999;
+      animation: pulse 2s infinite;
+    }
+
+    /* Hover effect (overrides animation smoothly) */
+    .floating-review:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Pulse animation */
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.08);
+      }
+
+      100% {
+        transform: scale(1);
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="page-bg"></div>
   <nav class="navbar" id="navbar">
@@ -77,7 +189,8 @@
     <div class="container" style="text-align:center">
       <span class="section-tag fade-up"><i class="fas fa-map-marker-alt"></i> Contact & Location</span>
       <h1 class="display display-lg text-navy fade-up fade-up-delay-1">Find Us & Reach Out</h1>
-      <p class="fade-up fade-up-delay-2">We're easy to find, and even easier to talk to. Drop by or send us a message.</p>
+      <p class="fade-up fade-up-delay-2">We're easy to find, and even easier to talk to. Drop by or send us a message.
+      </p>
     </div>
   </section>
 
@@ -86,12 +199,9 @@
     <div class="fade-up">
       <div class="map-wrap">
         <!-- Replace with your exact Google Maps embed URL (with API key or free embed) -->
-        <iframe
-          title="Smirk Dental Clinic Location"
+        <iframe title="Smirk Dental Clinic Location"
           src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3506.2!2d77.1589!3d28.5248!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d1de1e5a3a9b5%3A0x0!2sVasant%20Kunj%2C%20New%20Delhi!5e0!3m2!1sen!2sin!4v1"
-          allowfullscreen=""
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade">
+          allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
         </iframe>
       </div>
 
@@ -100,14 +210,16 @@
           <div class="info-icon">📍</div>
           <div>
             <div class="info-text-label">Address</div>
-            <div class="info-text-val">C6/7, 6096, Ground Floor, Entry from Gate No. 5 of C-6<br><strong>Opposite Delhi Public School (DPS), Vasant Kunj, Delhi – 110070</strong></div>
+            <div class="info-text-val">C6/7, 6096, Ground Floor, Entry from Gate No. 5 of C-6<br><strong>Opposite Delhi
+                Public School (DPS), Vasant Kunj, Delhi – 110070</strong></div>
           </div>
         </div>
         <div class="info-item">
           <div class="info-icon">🕐</div>
           <div>
             <div class="info-text-label">Clinic Hours</div>
-            <div class="info-text-val">Mon – Sat: <strong>9:00 AM – 1:30 PM</strong> &amp; <strong>1:45 PM – 7:00 PM</strong><br>Sunday: Closed</div>
+            <div class="info-text-val">Mon – Sat: <strong>9:00 AM – 1:30 PM</strong> &amp; <strong>1:45 PM – 7:00
+                PM</strong><br>Sunday: Closed</div>
           </div>
         </div>
         <div class="info-item">
@@ -121,11 +233,12 @@
 
       <div class="directions-hero">
         <div class="landmark-badge">📌 Landmark</div>
-        <div style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:0.5rem">Opposite Delhi Public School (DPS)</div>
-        <div style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:1.2rem">Easy to locate once you spot DPS Vasant Kunj school gate</div>
+        <div style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:0.5rem">Opposite Delhi Public School
+          (DPS)</div>
+        <div style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:1.2rem">Easy to locate once you spot DPS
+          Vasant Kunj school gate</div>
         <a href="https://www.google.com/maps/dir/?api=1&destination=Vasant+Kunj+Delhi+Smirk+Dental+Clinic"
-           target="_blank" rel="noopener noreferrer"
-           class="btn btn-gold">
+          target="_blank" rel="noopener noreferrer" class="btn btn-gold">
           <i class="fas fa-directions"></i> Get Directions
         </a>
       </div>
@@ -134,7 +247,8 @@
     <!-- Right: Intake Form -->
     <div class="intake-card fade-up fade-up-delay-1">
       <div class="intake-title">Patient Intake Form</div>
-      <div class="intake-sub">Fill this out before your visit to save time at the clinic. All info is confidential.</div>
+      <div class="intake-sub">Fill this out before your visit to save time at the clinic. All info is confidential.
+      </div>
 
       <div id="intakeFormWrap">
         <form id="intakeForm" onsubmit="submitIntake(event)">
@@ -172,7 +286,8 @@
             </div>
             <div class="form-group">
               <label class="form-label">Medical History / Allergies / Medications</label>
-              <textarea class="form-textarea" name="history" rows="4" placeholder="List any current medications, known allergies, previous dental treatments, diabetes, blood pressure issues, or any other relevant medical history..."></textarea>
+              <textarea class="form-textarea" name="history" rows="4"
+                placeholder="List any current medications, known allergies, previous dental treatments, diabetes, blood pressure issues, or any other relevant medical history..."></textarea>
             </div>
             <div class="privacy-note">
               🔒 Your information is private and will only be used to improve your dental care at Smirk Dental Clinic.
@@ -186,8 +301,10 @@
 
       <div id="intakeSuccess" style="display:none;text-align:center;padding:2.5rem 1rem">
         <div style="font-size:3rem;margin-bottom:1rem">✅</div>
-        <div style="font-family:var(--font-display);font-size:1.6rem;color:var(--navy);margin-bottom:0.5rem">Intake Submitted!</div>
-        <p style="color:var(--grey);font-size:0.9rem;margin-bottom:1.5rem">Thank you. Dr. Mehak will review your information before your appointment.</p>
+        <div style="font-family:var(--font-display);font-size:1.6rem;color:var(--navy);margin-bottom:0.5rem">Intake
+          Submitted!</div>
+        <p style="color:var(--grey);font-size:0.9rem;margin-bottom:1.5rem">Thank you. Dr. Mehak will review your
+          information before your appointment.</p>
         <a href="appointment.html" class="btn btn-primary">Book Your Appointment</a>
       </div>
     </div>
@@ -197,28 +314,66 @@
     <div class="container">
       <div class="footer-bottom" style="border-top:none;padding-top:0">
         <span>© 2025 Smirk Dental Clinic & Implant Centre</span>
-        <a href="https://g.page/r/REPLACE_WITH_GOOGLE_PLACE_ID/review" target="_blank" class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
+        <a href="https://www.google.com/maps/place/?q=place_id:ChIJYbabucgdDTkRAFAQTaS2fHM" target="_blank"
+          class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
       </div>
     </div>
   </footer>
 
   <a href="appointment.html" class="btn btn-primary floating-cta"><i class="fas fa-calendar-check"></i> Book Now</a>
 
+  <!-- ⭐ FLOATING GOOGLE REVIEW BUTTON -->
+  <a href="https://www.google.com/maps/place/?q=place_id:ChIJYbabucgdDTkRAFAQTaS2fHM" target="_blank"
+    class="btn btn-primary floating-review">
+    ⭐ Rate Us
+  </a>
+
   <script src="../js/shared.js"></script>
   <script>
     window.injectNav();
 
-    function submitIntake(e) {
+    updateAuthButton();
+
+    async function submitIntake(e) {
       e.preventDefault();
-      const btn = e.target.querySelector('[type="submit"]');
+
+      const form = e.target;
+      const btn = form.querySelector('[type="submit"]');
+
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-      // In production: send to EmailJS or your backend
-      setTimeout(() => {
+
+      const data = {
+        name: form.name.value,
+        phone: form.phone.value,
+        email: form.email.value,
+        dob: form.dob.value,
+        reason: form.reason.value,
+        history: form.history.value
+      };
+
+      try {
+        const res = await fetch('http://localhost:5001/intake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (!result.success) throw new Error();
+
+        // ✅ SUCCESS UI
         document.getElementById('intakeFormWrap').style.display = 'none';
         document.getElementById('intakeSuccess').style.display = 'block';
-      }, 1000);
+
+      } catch (err) {
+        alert("❌ Failed to submit. Try again.");
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-shield-alt"></i> Submit Securely';
+      }
     }
   </script>
 </body>
+
 </html>

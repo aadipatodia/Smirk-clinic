@@ -39,12 +39,15 @@ const appointmentSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
   },
   {
     timestamps: true,   // adds createdAt and updatedAt
   }
 );
-
 // ── Compound unique index to prevent double booking ──
 appointmentSchema.index({ date: 1, time: 1 }, { unique: true });
 

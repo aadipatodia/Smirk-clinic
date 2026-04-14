@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,69 +9,170 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <style>
     .doctor-layout {
-      display: grid; grid-template-columns: 1fr 1.6fr;
-      gap: 3.5rem; align-items: start;
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 3.5rem;
+      align-items: start;
       padding-bottom: 5rem;
     }
+
     .doctor-profile-card {
-      background: white; border-radius: var(--r-xl); padding: 2.5rem 2rem;
+      background: white;
+      border-radius: var(--r-xl);
+      padding: 2.5rem 2rem;
       text-align: center;
-      box-shadow: 0 8px 40px rgba(15,42,56,0.08);
-      border: 1px solid rgba(42,175,169,0.1);
-      position: sticky; top: 90px;
+      box-shadow: 0 8px 40px rgba(15, 42, 56, 0.08);
+      border: 1px solid rgba(42, 175, 169, 0.1);
+      position: sticky;
+      top: 90px;
     }
+
     .doc-avatar {
-      width: 200px; height: 200px; border-radius: 50%;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
       background: linear-gradient(145deg, var(--teal-pale), var(--sky));
       margin: 0 auto 1.3rem;
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       border: 5px solid white;
-      box-shadow: 0 12px 40px rgba(42,175,169,0.28);
+      box-shadow: 0 12px 40px rgba(42, 175, 169, 0.28);
     }
-    .doc-name { font-family: var(--font-display); font-size: 1.6rem; color: var(--navy); margin-bottom: 0.2rem; }
-    .doc-qual { font-size: 0.85rem; color: var(--teal); font-weight: 600; margin-bottom: 1rem; }
-    .cred-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+
+    .doc-name {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--navy);
+      margin-bottom: 0.2rem;
+    }
+
+    .doc-qual {
+      font-size: 0.85rem;
+      color: var(--teal);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .cred-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
     .cred-chip {
-      font-size: 0.72rem; font-weight: 600; padding: 0.3rem 0.7rem;
-      border-radius: var(--r-pill); background: var(--teal-glow);
-      color: var(--teal-deep); border: 1px solid rgba(42,175,169,0.2);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.3rem 0.7rem;
+      border-radius: var(--r-pill);
+      background: var(--teal-glow);
+      color: var(--teal-deep);
+      border: 1px solid rgba(42, 175, 169, 0.2);
     }
+
     .ratings-row {
-      display: flex; gap: 1rem; justify-content: center;
-      padding: 1.2rem 0; border-top: 1px solid rgba(42,175,169,0.1);
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      padding: 1.2rem 0;
+      border-top: 1px solid rgba(42, 175, 169, 0.1);
     }
-    .rating-mini { text-align: center; }
-    .rating-mini-num { font-family: var(--font-display); font-size: 1.4rem; color: var(--teal-deep); }
-    .rating-mini-label { font-size: 0.7rem; color: var(--grey); }
+
+    .rating-mini {
+      text-align: center;
+    }
+
+    .rating-mini-num {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      color: var(--teal-deep);
+    }
+
+    .rating-mini-label {
+      font-size: 0.7rem;
+      color: var(--grey);
+    }
 
     /* Bio section */
-    .bio-section { display: flex; flex-direction: column; gap: 2rem; }
+    .bio-section {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
     .bio-card {
-      background: white; border-radius: var(--r-lg); padding: 2rem;
-      border: 1px solid rgba(42,175,169,0.08);
-      box-shadow: 0 4px 20px rgba(15,42,56,0.04);
+      background: white;
+      border-radius: var(--r-lg);
+      padding: 2rem;
+      border: 1px solid rgba(42, 175, 169, 0.08);
+      box-shadow: 0 4px 20px rgba(15, 42, 56, 0.04);
     }
+
     .bio-card-title {
-      font-weight: 700; font-size: 1rem; color: var(--navy);
-      margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--navy);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
-    .bio-card-title i { color: var(--teal); }
-    .bio-para { font-size: 0.9rem; color: var(--slate); line-height: 1.8; }
-    .bio-para + .bio-para { margin-top: 0.8rem; }
-    .highlights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+
+    .bio-card-title i {
+      color: var(--teal);
+    }
+
+    .bio-para {
+      font-size: 0.9rem;
+      color: var(--slate);
+      line-height: 1.8;
+    }
+
+    .bio-para+.bio-para {
+      margin-top: 0.8rem;
+    }
+
+    .highlights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+    }
+
     .hl-item {
-      display: flex; align-items: center; gap: 0.7rem;
-      background: var(--snow); border-radius: 10px; padding: 0.8rem;
-      font-size: 0.82rem; color: var(--slate); font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      background: var(--snow);
+      border-radius: 10px;
+      padding: 0.8rem;
+      font-size: 0.82rem;
+      color: var(--slate);
+      font-weight: 500;
     }
-    .hl-icon { font-size: 1.2rem; width: 30px; }
-    @media(max-width:900px){
-      .doctor-layout { grid-template-columns: 1fr; }
-      .doctor-profile-card { position: static; }
-      .highlights-grid { grid-template-columns: 1fr; }
+
+    .hl-icon {
+      font-size: 1.2rem;
+      width: 30px;
+    }
+
+    @media(max-width:900px) {
+      .doctor-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .doctor-profile-card {
+        position: static;
+      }
+
+      .highlights-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="page-bg"></div>
   <nav class="navbar" id="navbar">
@@ -89,7 +191,8 @@
     <div class="container" style="text-align:center">
       <span class="section-tag fade-up">About The Doctor</span>
       <h1 class="display display-lg text-navy fade-up fade-up-delay-1">Meet Dr. Mehak Gupta</h1>
-      <p class="fade-up fade-up-delay-2">17+ years of clinical excellence, a warm patient-first approach, and a genuine passion for beautiful smiles.</p>
+      <p class="fade-up fade-up-delay-2">17+ years of clinical excellence, a warm patient-first approach, and a genuine
+        passion for beautiful smiles.</p>
     </div>
   </section>
 
@@ -99,21 +202,26 @@
       <div class="doctor-profile-card">
         <div class="doc-avatar">
           <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="200" height="200">
-            <defs><linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7DCFCC"/><stop offset="100%" stop-color="#2AAFA9"/></linearGradient></defs>
-            <circle cx="100" cy="100" r="100" fill="url(#bg2)"/>
-            <ellipse cx="100" cy="162" rx="52" ry="38" fill="#1E8A85"/>
-            <ellipse cx="100" cy="168" rx="52" ry="34" fill="white"/>
-            <rect x="90" y="138" width="20" height="44" fill="white"/>
-            <circle cx="100" cy="84" r="42" fill="#FDDCB5"/>
-            <ellipse cx="100" cy="56" rx="42" ry="28" fill="#3D2314"/>
-            <ellipse cx="100" cy="65" rx="42" ry="22" fill="#3D2314"/>
-            <ellipse cx="86" cy="84" rx="6" ry="7" fill="white"/>
-            <ellipse cx="114" cy="84" rx="6" ry="7" fill="white"/>
-            <circle cx="86" cy="85" r="3.5" fill="#1A2A3A"/>
-            <circle cx="114" cy="85" r="3.5" fill="#1A2A3A"/>
-            <path d="M92 98 Q100 106 108 98" stroke="#B06B5A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-            <path d="M74 150 Q63 165 74 178" stroke="#2AAFA9" stroke-width="4" fill="none"/>
-            <circle cx="74" cy="179" r="7" fill="#2AAFA9"/>
+            <defs>
+              <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#7DCFCC" />
+                <stop offset="100%" stop-color="#2AAFA9" />
+              </linearGradient>
+            </defs>
+            <circle cx="100" cy="100" r="100" fill="url(#bg2)" />
+            <ellipse cx="100" cy="162" rx="52" ry="38" fill="#1E8A85" />
+            <ellipse cx="100" cy="168" rx="52" ry="34" fill="white" />
+            <rect x="90" y="138" width="20" height="44" fill="white" />
+            <circle cx="100" cy="84" r="42" fill="#FDDCB5" />
+            <ellipse cx="100" cy="56" rx="42" ry="28" fill="#3D2314" />
+            <ellipse cx="100" cy="65" rx="42" ry="22" fill="#3D2314" />
+            <ellipse cx="86" cy="84" rx="6" ry="7" fill="white" />
+            <ellipse cx="114" cy="84" rx="6" ry="7" fill="white" />
+            <circle cx="86" cy="85" r="3.5" fill="#1A2A3A" />
+            <circle cx="114" cy="85" r="3.5" fill="#1A2A3A" />
+            <path d="M92 98 Q100 106 108 98" stroke="#B06B5A" stroke-width="2.5" fill="none" stroke-linecap="round" />
+            <path d="M74 150 Q63 165 74 178" stroke="#2AAFA9" stroke-width="4" fill="none" />
+            <circle cx="74" cy="179" r="7" fill="#2AAFA9" />
           </svg>
         </div>
         <div class="doc-name">Dr. Mehak Gupta</div>
@@ -143,7 +251,9 @@
         <a href="appointment.html" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem">
           <i class="fas fa-calendar-check"></i> Book Consultation — ₹500
         </a>
-        <a href="https://www.practo.com/delhi/doctor/dr-mehak-gupta/recommended" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:0.7rem">
+        <a href="https://www.practo.com/delhi/doctor/dr-mehak-gupta/recommended" target="_blank"
+          rel="noopener noreferrer" class="btn btn-secondary"
+          style="width:100%;justify-content:center;margin-top:0.7rem">
           View on Practo
         </a>
       </div>
@@ -154,35 +264,56 @@
       <div class="bio-card">
         <div class="bio-card-title"><i class="fas fa-user-md"></i> About Dr. Mehak Gupta</div>
         <p class="bio-para">
-          With over <strong>17 years of dedicated clinical practice</strong>, Dr. Mehak Gupta is one of South Delhi's most trusted and respected dental surgeons. Her journey began with a deep passion for restoring smiles — and that passion continues to drive every treatment she delivers.
+          With over <strong>17 years of dedicated clinical practice</strong>, Dr. Mehak Gupta is one of South Delhi's
+          most trusted and respected dental surgeons. Her journey began with a deep passion for restoring smiles — and
+          that passion continues to drive every treatment she delivers.
         </p>
         <p class="bio-para">
-          Dr. Gupta holds a Bachelor of Dental Surgery (BDS) degree and has built her expertise across a wide spectrum of dentistry — from routine preventive care to complex aesthetic and implant procedures. She stays at the forefront of dental innovation through continuous learning and advanced training.
+          Dr. Gupta holds a Bachelor of Dental Surgery (BDS) degree and has built her expertise across a wide spectrum
+          of dentistry — from routine preventive care to complex aesthetic and implant procedures. She stays at the
+          forefront of dental innovation through continuous learning and advanced training.
         </p>
         <p class="bio-para">
-          Her philosophy is simple: <em>"Every patient deserves to smile confidently. My job is to make that happen safely, comfortably, and beautifully."</em> This patient-first mindset is why she has earned a loyal patient base of families across Vasant Kunj and beyond.
+          Her philosophy is simple: <em>"Every patient deserves to smile confidently. My job is to make that happen
+            safely, comfortably, and beautifully."</em> This patient-first mindset is why she has earned a loyal patient
+          base of families across Vasant Kunj and beyond.
         </p>
       </div>
 
       <div class="bio-card">
         <div class="bio-card-title"><i class="fas fa-star"></i> Why Patients Choose Her</div>
         <div class="highlights-grid">
-          <div class="hl-item"><div class="hl-icon">🏆</div>17+ Years Clinical Excellence</div>
-          <div class="hl-item"><div class="hl-icon">😊</div>Warm, Reassuring Approach</div>
-          <div class="hl-item"><div class="hl-icon">🔬</div>Latest Technology & Techniques</div>
-          <div class="hl-item"><div class="hl-icon">🎯</div>Precise Aesthetic Eye</div>
-          <div class="hl-item"><div class="hl-icon">💬</div>Clear, Transparent Communication</div>
-          <div class="hl-item"><div class="hl-icon">🏥</div>Sterile, Premium Environment</div>
+          <div class="hl-item">
+            <div class="hl-icon">🏆</div>17+ Years Clinical Excellence
+          </div>
+          <div class="hl-item">
+            <div class="hl-icon">😊</div>Warm, Reassuring Approach
+          </div>
+          <div class="hl-item">
+            <div class="hl-icon">🔬</div>Latest Technology & Techniques
+          </div>
+          <div class="hl-item">
+            <div class="hl-icon">🎯</div>Precise Aesthetic Eye
+          </div>
+          <div class="hl-item">
+            <div class="hl-icon">💬</div>Clear, Transparent Communication
+          </div>
+          <div class="hl-item">
+            <div class="hl-icon">🏥</div>Sterile, Premium Environment
+          </div>
         </div>
       </div>
 
       <div class="bio-card">
         <div class="bio-card-title"><i class="fas fa-clinic-medical"></i> Smirk Dental Clinic & Implant Centre</div>
         <p class="bio-para">
-          Located opposite Delhi Public School in Vasant Kunj, the clinic is designed to be a calming, premium space — a far cry from the anxiety many associate with dental visits. Modern equipment, a warm team, and a meticulous approach to hygiene make every visit comfortable.
+          Located opposite Delhi Public School in Vasant Kunj, the clinic is designed to be a calming, premium space — a
+          far cry from the anxiety many associate with dental visits. Modern equipment, a warm team, and a meticulous
+          approach to hygiene make every visit comfortable.
         </p>
         <p class="bio-para">
-          Whether it's a child's first checkup or a complete smile makeover, every patient receives the same level of thoughtful, unhurried care.
+          Whether it's a child's first checkup or a complete smile makeover, every patient receives the same level of
+          thoughtful, unhurried care.
         </p>
         <div style="margin-top:1.2rem;display:flex;gap:0.8rem;flex-wrap:wrap">
           <a href="appointment.html" class="btn btn-primary"><i class="fas fa-calendar"></i> Book a Visit</a>
@@ -196,13 +327,18 @@
     <div class="container">
       <div class="footer-bottom" style="border-top:none;padding-top:0">
         <span>© 2025 Smirk Dental Clinic & Implant Centre</span>
-        <a href="https://g.page/r/REPLACE_WITH_GOOGLE_PLACE_ID/review" target="_blank" class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
+        <a href="https://www.google.com/maps/place/?q=place_id:ChIJYbabucgdDTkRAFAQTaS2fHM" target="_blank"
+          class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
       </div>
     </div>
   </footer>
 
   <a href="appointment.html" class="btn btn-primary floating-cta"><i class="fas fa-calendar-check"></i> Book Now</a>
   <script src="../js/shared.js"></script>
-  <script>window.injectNav();</script>
+  <script>
+    window.injectNav();
+    updateAuthButton();
+  </script>
 </body>
+
 </html>

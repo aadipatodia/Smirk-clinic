@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,69 +8,166 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <style>
-    .services-hero { padding: 7rem 0 3rem; }
+    .services-hero {
+      padding: 7rem 0 3rem;
+    }
+
     .services-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 1.5rem;
       margin-top: 3rem;
     }
+
     .svc-card {
       background: white;
       border-radius: var(--r-lg);
       padding: 2.2rem 2rem;
-      border: 1px solid rgba(42,175,169,0.1);
-      box-shadow: 0 4px 20px rgba(15,42,56,0.05);
+      border: 1px solid rgba(42, 175, 169, 0.1);
+      box-shadow: 0 4px 20px rgba(15, 42, 56, 0.05);
       transition: var(--t-med);
-      display: flex; gap: 1.5rem; align-items: flex-start;
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
     }
+
     .svc-card:hover {
       transform: translateY(-5px);
-      box-shadow: 0 16px 40px rgba(42,175,169,0.14);
+      box-shadow: 0 16px 40px rgba(42, 175, 169, 0.14);
       border-color: var(--teal-pale);
     }
+
     .svc-icon-wrap {
-      width: 60px; height: 60px; flex-shrink: 0;
+      width: 60px;
+      height: 60px;
+      flex-shrink: 0;
       border-radius: 16px;
       background: var(--teal-glow);
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 1.7rem;
       transition: var(--t-med);
     }
+
     .svc-card:hover .svc-icon-wrap {
       background: linear-gradient(135deg, var(--teal), var(--teal-deep));
     }
-    .svc-content h3 { font-weight: 700; font-size: 1.05rem; color: var(--navy); margin-bottom: 0.5rem; }
-    .svc-content p  { font-size: 0.875rem; color: var(--grey); line-height: 1.7; margin-bottom: 0.8rem; }
-    .svc-tag-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-    .svc-tag {
-      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
-      color: var(--teal); background: var(--teal-glow);
-      padding: 0.22rem 0.65rem; border-radius: var(--r-pill);
+
+    .svc-content h3 {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--navy);
+      margin-bottom: 0.5rem;
     }
+
+    .svc-content p {
+      font-size: 0.875rem;
+      color: var(--grey);
+      line-height: 1.7;
+      margin-bottom: 0.8rem;
+    }
+
+    .svc-tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .svc-tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--teal);
+      background: var(--teal-glow);
+      padding: 0.22rem 0.65rem;
+      border-radius: var(--r-pill);
+    }
+
     .pricing-bar {
       background: linear-gradient(135deg, var(--navy), #1A4A5A);
       border-radius: var(--r-xl);
       padding: 2.5rem;
       margin-top: 3rem;
-      display: grid; grid-template-columns: repeat(4, 1fr);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
       gap: 1px;
     }
+
     .price-item {
-      text-align: center; padding: 1.2rem 1rem;
-      border-right: 1px solid rgba(255,255,255,0.07);
+      text-align: center;
+      padding: 1.2rem 1rem;
+      border-right: 1px solid rgba(255, 255, 255, 0.07);
     }
-    .price-item:last-child { border-right: none; }
-    .price-name { font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-bottom: 0.5rem; }
-    .price-val { font-family: var(--font-display); font-size: 1.6rem; color: var(--gold-light); }
-    .price-note { font-size: 0.7rem; color: rgba(255,255,255,0.3); margin-top: 0.2rem; }
-    @media(max-width:768px){
-      .services-grid { grid-template-columns: 1fr; }
-      .pricing-bar { grid-template-columns: repeat(2,1fr); }
-      .svc-card { flex-direction: column; }
+
+    .price-item:last-child {
+      border-right: none;
+    }
+
+    .price-name {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 0.5rem;
+    }
+
+    .price-val {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--gold-light);
+    }
+
+    .price-note {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.3);
+      margin-top: 0.2rem;
+    }
+
+    @media(max-width:768px) {
+      .services-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .pricing-bar {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .svc-card {
+        flex-direction: column;
+      }
+    }
+
+    /* ⭐ Floating Google Review Button */
+    .floating-review {
+      position: fixed;
+      bottom: 90px;
+      right: 30px;
+      z-index: 999;
+      animation: pulse 2s infinite;
+    }
+
+    /* Hover effect (overrides animation smoothly) */
+    .floating-review:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Pulse animation */
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.08);
+      }
+
+      100% {
+        transform: scale(1);
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="page-bg"></div>
   <nav class="navbar" id="navbar">
@@ -88,7 +186,8 @@
     <div class="container" style="text-align:center">
       <span class="section-tag fade-up">Our Services</span>
       <h1 class="display display-lg text-navy fade-up fade-up-delay-1">Expert Dental Treatments</h1>
-      <p class="fade-up fade-up-delay-2">Comprehensive care from routine checkups to complex aesthetic transformations — all under one roof.</p>
+      <p class="fade-up fade-up-delay-2">Comprehensive care from routine checkups to complex aesthetic transformations —
+        all under one roof.</p>
     </div>
   </section>
 
@@ -99,7 +198,8 @@
           <div class="svc-icon-wrap">🦷</div>
           <div class="svc-content">
             <h3>Dental X-rays & Diagnosis</h3>
-            <p>State-of-the-art digital X-rays for precise, low-radiation diagnostics. Identify cavities, bone loss, and hidden issues early for the best outcomes.</p>
+            <p>State-of-the-art digital X-rays for precise, low-radiation diagnostics. Identify cavities, bone loss, and
+              hidden issues early for the best outcomes.</p>
             <div class="svc-tag-list">
               <span class="svc-tag">Digital RVG</span>
               <span class="svc-tag">OPG</span>
@@ -111,7 +211,8 @@
           <div class="svc-icon-wrap">✨</div>
           <div class="svc-content">
             <h3>Aesthetic Dentistry</h3>
-            <p>Transform your smile with carefully crafted cosmetic solutions — teeth whitening, bonding, and complete smile design tailored to your face.</p>
+            <p>Transform your smile with carefully crafted cosmetic solutions — teeth whitening, bonding, and complete
+              smile design tailored to your face.</p>
             <div class="svc-tag-list">
               <span class="svc-tag">Teeth Whitening</span>
               <span class="svc-tag">Smile Design</span>
@@ -123,7 +224,8 @@
           <div class="svc-icon-wrap">💎</div>
           <div class="svc-content">
             <h3>Laminates & Veneers</h3>
-            <p>Ultra-thin porcelain shells crafted to perfection — fixing chips, stains, and gaps while preserving your natural tooth structure.</p>
+            <p>Ultra-thin porcelain shells crafted to perfection — fixing chips, stains, and gaps while preserving your
+              natural tooth structure.</p>
             <div class="svc-tag-list">
               <span class="svc-tag">Porcelain Veneers</span>
               <span class="svc-tag">Composite Laminates</span>
@@ -135,7 +237,8 @@
           <div class="svc-icon-wrap">🔬</div>
           <div class="svc-content">
             <h3>Root Canal Treatment (RCT)</h3>
-            <p>Modern, painless root canal therapy to save your natural tooth. Single or multi-visit options with rotary instruments for faster healing.</p>
+            <p>Modern, painless root canal therapy to save your natural tooth. Single or multi-visit options with rotary
+              instruments for faster healing.</p>
             <div class="svc-tag-list">
               <span class="svc-tag">Single-visit RCT</span>
               <span class="svc-tag">Rotary RCT</span>
@@ -147,7 +250,8 @@
           <div class="svc-icon-wrap">🏗️</div>
           <div class="svc-content">
             <h3>Dental Implants</h3>
-            <p>Permanent, natural-looking tooth replacements. Titanium implants fused with bone for lifelong stability and comfort.</p>
+            <p>Permanent, natural-looking tooth replacements. Titanium implants fused with bone for lifelong stability
+              and comfort.</p>
             <div class="svc-tag-list">
               <span class="svc-tag">Single Implant</span>
               <span class="svc-tag">Full Arch</span>
@@ -159,7 +263,8 @@
           <div class="svc-icon-wrap">🪥</div>
           <div class="svc-content">
             <h3>Scaling & Cleaning</h3>
-            <p>Professional deep cleaning to remove plaque, tartar, and stains — the foundation of a healthy mouth and fresh breath.</p>
+            <p>Professional deep cleaning to remove plaque, tartar, and stains — the foundation of a healthy mouth and
+              fresh breath.</p>
             <div class="svc-tag-list">
               <span class="svc-tag">Ultrasonic Scaling</span>
               <span class="svc-tag">Polishing</span>
@@ -171,7 +276,8 @@
           <div class="svc-icon-wrap">👑</div>
           <div class="svc-content">
             <h3>Crowns & Bridges</h3>
-            <p>Precision-crafted zirconia and PFM crowns to restore damaged teeth with natural aesthetics and exceptional durability.</p>
+            <p>Precision-crafted zirconia and PFM crowns to restore damaged teeth with natural aesthetics and
+              exceptional durability.</p>
             <div class="svc-tag-list">
               <span class="svc-tag">Zirconia Crown</span>
               <span class="svc-tag">PFM Bridge</span>
@@ -183,7 +289,8 @@
           <div class="svc-icon-wrap">😁</div>
           <div class="svc-content">
             <h3>Orthodontics & Aligners</h3>
-            <p>Straighten your smile discreetly with clear aligners or traditional braces — customised treatment plans for all ages.</p>
+            <p>Straighten your smile discreetly with clear aligners or traditional braces — customised treatment plans
+              for all ages.</p>
             <div class="svc-tag-list">
               <span class="svc-tag">Clear Aligners</span>
               <span class="svc-tag">Metal Braces</span>
@@ -227,12 +334,22 @@
     <div class="container">
       <div class="footer-bottom" style="border-top:none;padding-top:0">
         <span>© 2025 Smirk Dental Clinic & Implant Centre</span>
-        <a href="https://g.page/r/REPLACE_WITH_GOOGLE_PLACE_ID/review" target="_blank" class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
+        <a href="https://www.google.com/maps/place/?q=place_id:ChIJYbabucgdDTkRAFAQTaS2fHM" target="_blank"
+          class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
       </div>
     </div>
   </footer>
   <a href="appointment.html" class="btn btn-primary floating-cta"><i class="fas fa-calendar-check"></i> Book Now</a>
+  <!-- ⭐ FLOATING GOOGLE REVIEW BUTTON -->
+  <a href="https://www.google.com/maps/place/?q=place_id:ChIJYbabucgdDTkRAFAQTaS2fHM" target="_blank"
+    class="btn btn-primary floating-review">
+    ⭐ Rate Us
+  </a>
   <script src="../js/shared.js"></script>
-  <script>window.injectNav();</script>
+  <script>
+    window.injectNav();
+    updateAuthButton();
+  </script>
 </body>
+
 </html>

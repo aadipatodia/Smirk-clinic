@@ -4,17 +4,17 @@
 // POST /appointments                  → create booking
 // ─────────────────────────────────────────────
 
-const express    = require('express');
+const express = require('express');
 const { body, query, validationResult } = require('express-validator');
-const router     = express.Router();
+const router = express.Router();
 const Appointment = require('../models/Appointment');
 
 // ── Valid time slots (must match frontend ALL_SLOTS) ──
 const VALID_SLOTS = [
-  '09:00 AM','09:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
-  '12:00 PM','12:30 PM','01:00 PM',
-  '01:45 PM','02:15 PM','02:45 PM','03:15 PM','03:45 PM',
-  '04:15 PM','04:45 PM','05:15 PM','05:45 PM','06:15 PM','06:30 PM',
+  '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+  '12:00 PM', '12:30 PM', '01:00 PM',
+  '01:45 PM', '02:15 PM', '02:45 PM', '03:15 PM', '03:45 PM',
+  '04:15 PM', '04:45 PM', '05:15 PM', '05:45 PM', '06:15 PM', '06:30 PM',
 ];
 
 // ── Helper: validate date is not Sunday and not in the past ──
@@ -23,7 +23,7 @@ function isValidAppointmentDate(dateStr) {
   if (isNaN(d)) return false;
   if (d.getDay() === 0) return false;             // No Sundays
   const today = new Date();
-  today.setHours(0,0,0,0);
+  today.setHours(0, 0, 0, 0);
   return d >= today;
 }
 
@@ -44,7 +44,7 @@ const validate = (rules) => [
 ];
 
 /* ═══════════════════════════════════════════════
-   GET /appointments?date=YYYY-MM-DD
+   GET /appointments/all?date=YYYY-MM-DD
    Returns list of booked time slots for a date
 ═══════════════════════════════════════════════ */
 router.get(
@@ -76,7 +76,7 @@ router.get(
         available: availableSlots.length,
       });
     } catch (err) {
-      console.error('[GET /appointments]', err);
+      console.error('[GET /appointments/all]', err);
       return res.status(500).json({ success: false, message: 'Server error' });
     }
   }
@@ -111,6 +111,8 @@ router.post(
   ]),
   async (req, res) => {
     const { name, phone, date, time, notes } = req.body;
+
+
 
     try {
       // ── Check for double booking ──
@@ -154,22 +156,80 @@ router.post(
   }
 );
 
+
+/* ═══════════════════════════════════════════════
+   GET /appointments/all/all (admin)
+═══════════════════════════════════════════════ */
+router.get('/all', async (req, res) => {
+  try {
+    const appointments = await Appointment.find()
+      .sort({ date: 1, time: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      appointments
+    });
+  } catch (err) {
+    console.error('[ADMIN FETCH]', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 /* ═══════════════════════════════════════════════
    DELETE /appointments/:id  (optional - for admin)
    Cancel an appointment
 ═══════════════════════════════════════════════ */
-router.delete('/:id', async (req, res) => {
+router.put('/:id/cancel', async (req, res) => {
   try {
-    const appt = await Appointment.findByIdAndUpdate(
+    const updated = await Appointment.findByIdAndUpdate(
       req.params.id,
       { status: 'cancelled' },
       { new: true }
     );
-    if (!appt) return res.status(404).json({ success: false, message: 'Appointment not found' });
-    return res.json({ success: true, message: 'Appointment cancelled', appointment: appt });
+
+    res.json({
+      success: true,
+      appointment: updated
+    });
+
   } catch (err) {
-    console.error('[DELETE /appointments]', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false });
+  }
+});
+
+// ═════════ RESCHEDULE APPOINTMENT ═════════
+router.put('/:id', async (req, res) => {
+  try {
+    const { date, time } = req.body;
+
+    const existing = await Appointment.findOne({
+      date,
+      time,
+      status: 'confirmed',
+      _id: { $ne: req.params.id }
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: 'Slot already booked'
+      });
+    }
+
+    const updated = await Appointment.findByIdAndUpdate(
+      req.params.id,
+      { date, time },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      appointment: updated
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false });
   }
 });
 

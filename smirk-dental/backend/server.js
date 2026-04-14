@@ -33,13 +33,7 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (Postman, curl, etc.)
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error('CORS: Origin not allowed'));
-  },
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: true
 }));
 
 // ── BODY PARSING ──
@@ -74,12 +68,45 @@ const connectDB = async () => {
       }
     );
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    await mongoose.connection.syncIndexes();
   } catch (err) {
     console.error('❌ MongoDB connection failed:', err.message);
     process.exit(1);
   }
 };
 
+// ── GOOGLE REVIEWS API ──
+app.get('/reviews', async (req, res) => {
+  try {
+    const PLACE_ID = 'ChIJYbabucgdDTkRAFAQTaS2fHM';
+    const API_KEY = process.env.GOOGLE_API_KEY;
+
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${PLACE_ID}&fields=name,rating,reviews&key=${API_KEY}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.status !== 'OK') {
+      return res.status(500).json({ success: false, message: data.status });
+    }
+
+    res.json({
+      success: true,
+      reviews: data.result.reviews || [],
+      rating: data.result.rating
+    });
+
+  } catch (err) {
+    console.error('Google Reviews Error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+  }
+});
+
+const userRouter = require('./routes/user');
+app.use('/user', userRouter);
+
+const intakeRouter = require('./routes/intake');
+app.use('/intake', intakeRouter);
 // ── ROUTES ──
 app.use('/appointments', appointmentsRouter);
 
