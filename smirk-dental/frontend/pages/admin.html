@@ -94,6 +94,8 @@
                         Home
                     </a>
 
+                    <button onclick="openUnavailable()">Block Slots</button>
+
                     <!-- 🔴 LOGOUT BUTTON -->
                     <button class="btn btn-sm btn-primary" onclick="logout()">
                         Logout
@@ -164,6 +166,10 @@
             } else {
                 alert("Wrong password");
             }
+        }
+
+        function openUnavailable() {
+            window.location.href = "appointment.html?adminBlock=true";
         }
 
         function logout() {

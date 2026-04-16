@@ -5,17 +5,22 @@
 
 require('dotenv').config();
 
-const express      = require('express');
-const mongoose     = require('mongoose');
-const cors         = require('cors');
-const helmet       = require('helmet');
-const rateLimit    = require('express-rate-limit');
-const path         = require('path');
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const path = require('path');
 
+
+const { startScheduler } = require('./services/scheduler');
 const appointmentsRouter = require('./routes/appointments');
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 5001;
+
+const unavailableRouter = require('./routes/unavailable');
+app.use('/unavailable', unavailableRouter);
 
 console.log("ENV:", process.env.MONGODB_URI);
 
@@ -143,6 +148,7 @@ app.use((err, req, res, next) => {
 
 // ── START ──
 connectDB().then(() => {
+  startScheduler();
   app.listen(PORT, () => {
     console.log(`
 🦷 Smirk Dental Backend running

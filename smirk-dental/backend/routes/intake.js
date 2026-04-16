@@ -19,13 +19,16 @@ router.post('/', async (req, res) => {
 
 // GET ALL INTAKES (ADMIN)
 router.get('/', async (req, res) => {
-    const { date } = req.query;
+    try {
+        const data = await Intake.find().populate('appointmentId');
 
-    const appointments = await Appointment.find({ date });
-
-    const bookedSlots = appointments.map(a => a.time);
-
-    res.json({ bookedSlots });
+        res.json({
+            success: true,
+            data
+        });
+    } catch (err) {
+        res.status(500).json({ success: false });
+    }
 });
 
 module.exports = router;

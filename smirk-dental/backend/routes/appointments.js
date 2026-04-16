@@ -8,6 +8,8 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const router = express.Router();
 const Appointment = require('../models/Appointment');
+const { sendWhatsAppMessage } = require('../services/whatsapp');
+const Unavailable = require('../models/Unavailable');
 
 // ── Valid time slots (must match frontend ALL_SLOTS) ──
 const VALID_SLOTS = [
@@ -52,32 +54,53 @@ router.get(
   validate([
     query('date')
       .matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('date must be YYYY-MM-DD')
-      .custom(d => { if (!isValidAppointmentDate(d)) throw new Error('Invalid date'); return true; }),
+      .custom(d => {
+        if (!isValidAppointmentDate(d)) throw new Error('Invalid date');
+        return true;
+      }),
   ]),
   async (req, res) => {
     try {
       const { date } = req.query;
 
-      // Find all confirmed appointments for that date
+      // 🔹 Get booked appointments
       const booked = await Appointment.find(
         { date, status: { $in: ['confirmed'] } },
         'time -_id'
       ).lean();
 
-      const bookedSlots = booked.map(a => a.time);
-      const availableSlots = VALID_SLOTS.filter(s => !bookedSlots.includes(s));
+      let bookedSlots = booked.map(a => a.time);
 
+      // 🔹 Get blocked slots (admin)
+      const blocked = await Unavailable.find({ date }).lean();
+
+      const blockedSlots = [];
+
+      blocked.forEach(b => {
+        if (b.time) {
+          blockedSlots.push(b.time);
+        } else {
+          blockedSlots.push(null); // full day block
+        }
+      });
+
+      // 🔹 Remove duplicates from booked slots
+      const uniqueBooked = [...new Set(bookedSlots)];
+
+      // 🔹 Final response
       return res.json({
         success: true,
         date,
-        bookedSlots,
-        availableSlots,
-        total: VALID_SLOTS.length,
-        available: availableSlots.length,
+        bookedSlots: uniqueBooked,
+        blockedSlots
       });
+
     } catch (err) {
-      console.error('[GET /appointments/all]', err);
-      return res.status(500).json({ success: false, message: 'Server error' });
+      console.error('[GET /appointments]', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Server error'
+      });
     }
   }
 );
@@ -127,21 +150,31 @@ router.post(
       // ── Create appointment ──
       const appointment = await Appointment.create({ name, phone, date, time, notes });
 
-      // ── Optional: Send email notification ──
-      // sendBookingEmail(appointment).catch(err => console.error('Email error:', err));
 
-      return res.status(201).json({
-        success: true,
-        message: 'Appointment booked successfully!',
-        appointment: {
-          id: appointment._id,
-          name: appointment.name,
-          date: appointment.date,
-          time: appointment.time,
-          status: appointment.status,
-          createdAt: appointment.createdAt,
-        },
-      });
+      if (process.env.WHATSAPP_TOKEN) {
+        try {
+          const message = `
+🦷 ${process.env.CLINIC_NAME}
+
+Hello ${appointment.name},
+
+Your appointment is confirmed!
+
+📅 Date: ${appointment.date}
+🕐 Time: ${appointment.time}
+
+📍 Smirk Dental Clinic, Vasant Kunj
+
+See you soon 😊
+`;
+
+          const cleanPhone = appointment.phone.replace(/\D/g, '');
+          await sendWhatsAppMessage(cleanPhone, message);
+
+        } catch (err) {
+          console.error("WhatsApp failed:", err.message);
+        }
+      }
     } catch (err) {
       // MongoDB duplicate key error (race condition safety)
       if (err.code === 11000) {
@@ -227,6 +260,28 @@ router.put('/:id', async (req, res) => {
       success: true,
       appointment: updated
     });
+
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
+router.post('/:id/review', async (req, res) => {
+  try {
+    const appt = await Appointment.findById(req.params.id);
+
+    const message = `
+Thank you for visiting ${process.env.CLINIC_NAME} 😊
+
+We would love your feedback:
+
+⭐ https://search.google.com/local/writereview?placeid=ChIJYbabucgdDTkRAFAQTaS2fHM
+`;
+
+    const cleanPhone = appt.phone.replace(/\D/g, '');
+    await sendWhatsAppMessage(cleanPhone, message);
+
+    res.json({ success: true });
 
   } catch (err) {
     res.status(500).json({ success: false });

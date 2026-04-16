@@ -425,10 +425,13 @@
   <div class="page-bg"></div>
   <nav class="navbar" id="navbar">
     <div class="navbar-inner">
-      <a href="../index.html" class="nav-logo"><span class="dot">✦</span> Smirk <span class="accent">Dental</span></a>
+      <a href="#" class="nav-logo" id="logoLink"><span class="dot">✦</span> Smirk <span class="accent">Dental</span></a>
       <ul class="nav-links" id="navLinks"></ul>
       <div class="nav-right">
         <button class="hamburger" id="hamburger"><i class="fas fa-bars"></i></button>
+        <button id="adminBackBtn" style="display:none;margin-left:10px;" onclick="window.location.href='admin.html'">
+          ← Admin Panel
+        </button>
       </div>
     </div>
   </nav>
@@ -496,7 +499,7 @@
 
         <!-- Main form -->
         <div class="booking-form" id="bookingForm">
-          <div class="booking-title">Book an Appointment</div>
+          <div class="booking-title" id="bookingTitle">Book an Appointment</div>
           <div class="booking-sub">All slots are 30 minutes. Arrive 5 minutes early.</div>
 
           <!-- Date selection -->
@@ -507,62 +510,68 @@
 
           <!-- Time slots -->
           <div class="form-section">
-            <div class="form-section-title"><i class="fas fa-clock" style="color:var(--teal)"></i> Select Time Slot
-            </div>
-            <div class="slots-grid" id="slotsGrid">
-              <div class="slot-skeleton"></div>
-              <div class="slot-skeleton"></div>
-              <div class="slot-skeleton"></div>
-              <div class="slot-skeleton"></div>
-            </div>
-            <div id="slotsNote" style="font-size:0.75rem;color:var(--grey);margin-top:0.6rem;display:none">
-              <span
-                style="background:#F5F5F5;border-radius:4px;padding:0.15rem 0.5rem;margin-right:0.5rem;font-size:0.7rem;text-decoration:line-through">10:30</span>
-              = Already booked
-            </div>
+            <i class="fas fa-clock" style="color:var(--teal)"></i> Select Time Slot
           </div>
 
-          <!-- Patient details -->
-          <div class="form-section">
-            <div class="form-section-title"><i class="fas fa-user" style="color:var(--teal)"></i> Your Details</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Full Name *</label>
-                <input class="form-input" type="text" id="patientName" placeholder="Priya Sharma" required />
-              </div>
-              <div class="form-group">
-                <label class="form-label">Phone Number *</label>
-                <input class="form-input" type="tel" id="patientPhone" placeholder="+91 98765 43210" required />
-              </div>
-            </div>
-          </div>
-
-          <div id="formError"
-            style="display:none;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;border-radius:var(--r-sm);padding:0.8rem 1rem;font-size:0.85rem;margin-top:1rem">
-          </div>
-
-          <button class="btn btn-primary btn-lg" id="submitBtn"
-            style="width:100%;justify-content:center;margin-top:1.5rem" onclick="submitBooking()">
-            <i class="fas fa-calendar-check"></i> Confirm Appointment
+          <button onclick="blockFullDay()"
+            style="margin-bottom:10px;background:#ff9800;color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">
+            Block Full Day
           </button>
-          <div style="text-align:center;font-size:0.75rem;color:var(--grey);margin-top:0.8rem">
-            <i class="fas fa-lock" style="color:var(--teal)"></i> Your details are secure and private
+
+          <div class="slots-grid" id="slotsGrid">
+            <div class="slot-skeleton"></div>
+            <div class="slot-skeleton"></div>
+            <div class="slot-skeleton"></div>
+            <div class="slot-skeleton"></div>
+          </div>
+          <div id="slotsNote" style="font-size:0.75rem;color:var(--grey);margin-top:0.6rem;display:none">
+            <span
+              style="background:#F5F5F5;border-radius:4px;padding:0.15rem 0.5rem;margin-right:0.5rem;font-size:0.7rem;text-decoration:line-through">10:30</span>
+            = Already booked
           </div>
         </div>
 
-        <!-- Success state -->
-        <div class="success-state" id="successState">
-          <div class="success-icon">🎉</div>
-          <h3>Appointment Confirmed!</h3>
-          <p style="color:var(--grey);margin-bottom:1.5rem;font-size:0.95rem">We look forward to seeing you at Smirk
-            Dental Clinic.</p>
-          <div id="confirmDetails"
-            style="background:var(--teal-glow);border-radius:var(--r-md);padding:1.2rem;text-align:left;margin-bottom:1.5rem;font-size:0.875rem">
+        <!-- Patient details -->
+        <div class="form-section">
+          <div class="form-section-title"><i class="fas fa-user" style="color:var(--teal)"></i> Your Details</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input class="form-input" type="text" id="patientName" placeholder="Priya Sharma" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone Number *</label>
+              <input class="form-input" type="tel" id="patientPhone" placeholder="+91 98765 43210" required />
+            </div>
           </div>
-          <a href="../index.html" class="btn btn-secondary">Back to Home</a>
+        </div>
+
+        <div id="formError"
+          style="display:none;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;border-radius:var(--r-sm);padding:0.8rem 1rem;font-size:0.85rem;margin-top:1rem">
+        </div>
+
+        <button class="btn btn-primary btn-lg" id="submitBtn"
+          style="width:100%;justify-content:center;margin-top:1.5rem" onclick="submitBooking()">
+          <i class="fas fa-calendar-check"></i> Confirm Appointment
+        </button>
+        <div style="text-align:center;font-size:0.75rem;color:var(--grey);margin-top:0.8rem">
+          <i class="fas fa-lock" style="color:var(--teal)"></i> Your details are secure and private
         </div>
       </div>
+
+      <!-- Success state -->
+      <div class="success-state" id="successState">
+        <div class="success-icon">🎉</div>
+        <h3>Appointment Confirmed!</h3>
+        <p style="color:var(--grey);margin-bottom:1.5rem;font-size:0.95rem">We look forward to seeing you at Smirk
+          Dental Clinic.</p>
+        <div id="confirmDetails"
+          style="background:var(--teal-glow);border-radius:var(--r-md);padding:1.2rem;text-align:left;margin-bottom:1.5rem;font-size:0.875rem">
+        </div>
+        <a href="../index.html" class="btn btn-secondary">Back to Home</a>
+      </div>
     </div>
+  </div>
   </div>
 
   <footer class="footer">
@@ -583,6 +592,7 @@
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const urlParams = new URLSearchParams(window.location.search);
+    const isAdminBlock = urlParams.get('adminBlock');
     const isReschedule = urlParams.get('reschedule');
     const rescheduleId = localStorage.getItem('rescheduleId');
     let currentUserSlot = null;
@@ -621,7 +631,9 @@
 
     let selectedDate = null;
     let selectedTime = null;
+    let selectedTimes = [];
     let bookedSlots = [];
+    let blockedSlots = [];
 
     // 🔥 FIX: SET BEFORE DATE PICKER
     if (isReschedule && rescheduleId) {
@@ -636,6 +648,26 @@
         selectedDate = appt.date;
         selectedTime = appt.time;
       }
+    }
+
+    async function blockFullDay() {
+      if (!selectedDate) {
+        alert("Select a date first");
+        return;
+      }
+
+      await fetch(`${API_BASE}/unavailable`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: selectedDate,
+          time: null
+        })
+      });
+
+      alert("Full day blocked");
+
+      await loadSlots(selectedDate);
     }
 
     // ── BUILD DATE PICKER ──
@@ -699,12 +731,16 @@
         const res = await fetch(`${API_BASE}/appointments?date=${date}`);
         const data = await res.json();
         bookedSlots = (data.bookedSlots || []).filter(time => {
-          // 🔥 REMOVE USER'S OLD SLOT AFTER CANCEL / RESCHEDULE
-          if (currentUserSlot && time === currentUserSlot.time) {
-            return false;
-          }
+          if (currentUserSlot && time === currentUserSlot.time) return false;
           return true;
         });
+
+        blockedSlots = data.blockedSlots || [];
+
+        // 🔥 FULL DAY BLOCK
+        if (blockedSlots.includes(null)) {
+          bookedSlots = [...ALL_SLOTS];
+        }
 
       }
       catch (err) {
@@ -771,6 +807,22 @@
         }
 
         // 🔥 OTHER BOOKED SLOTS
+        // 🔥 BLOCKED SLOTS (ADMIN)
+        // 🔥 FULL DAY BLOCK
+        if (blockedSlots.includes(null)) {
+          btn.classList.add('booked');
+          btn.disabled = true;
+          btn.textContent = time + ' (Unavailable)';
+        }
+
+        // 🔥 BLOCKED SLOT
+        else if (blockedSlots.includes(time)) {
+          btn.classList.add('booked');
+          btn.disabled = true;
+          btn.textContent = time + ' (Unavailable)';
+        }
+
+        // 🔥 BOOKED SLOTS (PATIENTS)
         else if (bookedSlots.includes(time)) {
           btn.classList.add('booked');
           btn.disabled = true;
@@ -786,9 +838,21 @@
 
         else {
           btn.addEventListener('click', () => {
-            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            selectedTime = time;
+
+            if (isAdminBlock) {
+              if (selectedTimes.includes(time)) {
+                selectedTimes = selectedTimes.filter(t => t !== time);
+                btn.classList.remove('selected');
+              } else {
+                selectedTimes.push(time);
+                btn.classList.add('selected');
+              }
+            } else {
+              document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+              btn.classList.add('selected');
+              selectedTime = time;
+            }
+
           });
         }
 
@@ -809,6 +873,45 @@
       errEl.style.display = 'none';
 
       const isRescheduleFlow = isReschedule && rescheduleId;
+
+      if (isAdminBlock) {
+        if (!selectedDate) {
+          alert("Select a date");
+          return;
+        }
+
+        // FULL DAY
+        if (selectedTimes.length === 0) {
+          await fetch(`${API_BASE}/unavailable`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: selectedDate, time: null })
+          });
+        }
+
+        // MULTIPLE SLOTS
+        else {
+          for (const time of selectedTimes) {
+            await fetch(`${API_BASE}/unavailable`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ date: selectedDate, time })
+            });
+          }
+        }
+
+        alert("Blocked successfully");
+
+        // 🔥 RESET + REFRESH UI
+        selectedTimes = [];
+        selectedTime = null;
+
+        await loadSlots(selectedDate);
+        // 🔥 CLEAR UI SELECTION
+        document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+
+        return;
+      }
 
       if (!isRescheduleFlow) {
         if (!selectedDate) { showErr('Please select a date.'); return; }
@@ -918,7 +1021,50 @@
     window.injectNav();
     updateAuthButton();
 
+    // 🔥 ADMIN MODE UI
+    if (isAdminBlock) {
+
+      // 🔴 Disable logo click
+      const logo = document.getElementById('logoLink');
+      if (logo) {
+        logo.removeAttribute('href');
+        logo.style.pointerEvents = 'none';
+        logo.style.opacity = '0.6';
+      }
+
+      // 🔴 Disable navbar links
+      document.querySelectorAll('.nav-links a').forEach(link => {
+        link.style.pointerEvents = 'none';
+        link.style.opacity = '0.5';
+      });
+
+      // 🟢 Show admin back button
+      const btn = document.getElementById('adminBackBtn');
+      if (btn) btn.style.display = 'inline-block';
+
+      // 🟢 Change title
+      document.getElementById('bookingTitle').innerText = "Manage Availability";
+
+      // 🟢 Change button
+      document.getElementById('submitBtn').innerHTML = "Block Slot";
+
+      // 🔥 HIDE USER DETAILS SECTION (CORRECT)
+      const allSections = document.querySelectorAll('.form-section');
+      if (allSections[2]) allSections[2].style.display = 'none';
+
+      // 🔴 Hide success state
+      document.getElementById('successState').style.display = 'none';
+
+      // 🟢 Subtitle
+      document.querySelector('.booking-sub').innerText = "Select date and block slots.";
+    }
+
     buildDatePicker();
+    // 🔥 FORCE FIRST DATE CLICK (FIX DATE NOT LOADING)
+    setTimeout(() => {
+      const first = document.querySelector('.date-btn');
+      if (first) first.click();
+    }, 100);
   </script>
 </body>
 
