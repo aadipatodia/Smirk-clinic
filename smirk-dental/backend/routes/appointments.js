@@ -170,11 +170,20 @@ See you soon 😊
 
           const cleanPhone = appointment.phone.replace(/\D/g, '');
           await sendWhatsAppMessage(cleanPhone, message);
-
-        } catch (err) {
+        }
+        catch (err) {
           console.error("WhatsApp failed:", err.message);
         }
       }
+      return res.json({
+        success: true,
+        appointment: {
+          id: appointment._id,
+          name: appointment.name,
+          date: appointment.date,
+          time: appointment.time,
+        }
+      });
     } catch (err) {
       // MongoDB duplicate key error (race condition safety)
       if (err.code === 11000) {
