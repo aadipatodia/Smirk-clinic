@@ -253,7 +253,7 @@
       font-family: inherit;
     }
 
-    .slot-btn:hover:not(.booked):not(.disabled) {
+    .slot-btn:hover:not(.booked):not(.unavailable):not(.disabled) {
       border-color: var(--teal);
       background: var(--teal-glow);
       color: var(--teal);
@@ -265,12 +265,49 @@
       color: white;
     }
 
+    .slots-note {
+      font-size: 0.75rem;
+      color: var(--grey);
+      margin-top: 0.6rem;
+      display: none;
+    }
+
+    .slot-indicator {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 0.15rem 0.5rem;
+      margin-right: 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .slot-indicator.booked {
+      background: #f5f5f5;
+      color: var(--light-grey);
+      text-decoration: line-through;
+    }
+
+    .slot-indicator.unavailable {
+      background: #fff7ed;
+      color: #c2410c;
+    }
+
+
     .slot-btn.booked {
       background: var(--snow);
       color: var(--light-grey);
       cursor: not-allowed;
       text-decoration: line-through;
       border-color: transparent;
+    }
+
+    .slot-btn.unavailable {
+      background: #fff7ed;
+      color: #c2410c;
+      cursor: not-allowed;
+      border-color: rgba(194, 65, 12, 0.2);
+      font-weight: 600;
     }
 
     .slot-btn.loading {
@@ -513,7 +550,7 @@
             <i class="fas fa-clock" style="color:var(--teal)"></i> Select Time Slot
           </div>
 
-          <button onclick="blockFullDay()"
+          <button id="blockFullDayBtn" onclick="blockFullDay()"
             style="margin-bottom:10px;background:#ff9800;color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">
             Block Full Day
           </button>
@@ -524,11 +561,7 @@
             <div class="slot-skeleton"></div>
             <div class="slot-skeleton"></div>
           </div>
-          <div id="slotsNote" style="font-size:0.75rem;color:var(--grey);margin-top:0.6rem;display:none">
-            <span
-              style="background:#F5F5F5;border-radius:4px;padding:0.15rem 0.5rem;margin-right:0.5rem;font-size:0.7rem;text-decoration:line-through">10:30</span>
-            = Already booked
-          </div>
+          <div id="slotsNote" class="slots-note"></div>
         </div>
 
         <!-- Patient details -->
@@ -632,8 +665,10 @@
     let selectedDate = null;
     let selectedTime = null;
     let selectedTimes = [];
+    let actualBookedSlots = [];
     let bookedSlots = [];
     let blockedSlots = [];
+
 
     // 🔥 FIX: SET BEFORE DATE PICKER
     if (isReschedule && rescheduleId) {
@@ -726,14 +761,16 @@
       const note = document.getElementById('slotsNote');
       grid.innerHTML = Array(4).fill('<div class="slot-skeleton"></div>').join('');
       note.style.display = 'none';
+      note.innerHTML = '';
 
       try {
         const res = await fetch(`${API_BASE}/appointments?date=${date}`);
         const data = await res.json();
-        bookedSlots = (data.bookedSlots || []).filter(time => {
+        actualBookedSlots = (data.bookedSlots || []).filter(time => {
           if (currentUserSlot && time === currentUserSlot.time) return false;
           return true;
         });
+        bookedSlots = [...actualBookedSlots];
 
         blockedSlots = data.blockedSlots || [];
 
@@ -741,7 +778,8 @@
         if (blockedSlots.includes(null)) {
           bookedSlots = [...ALL_SLOTS];
         }
-
+        console.log("BLOCKED:", blockedSlots);
+        console.log("BOOKED:", bookedSlots);
       }
       catch (err) {
         console.error("API ERROR:", err);
@@ -750,7 +788,7 @@
       }
 
       renderSlots();
-      note.style.display = bookedSlots.length ? 'block' : 'none';
+      updateSlotsNote();
     }
 
     function getISTDateTime(dateStr, timeStr) {
@@ -806,27 +844,24 @@
           });
         }
 
-        // 🔥 OTHER BOOKED SLOTS
-        // 🔥 BLOCKED SLOTS (ADMIN)
-        // 🔥 FULL DAY BLOCK
+        // 🔥 PRIORITY 1: FULL DAY BLOCK
         if (blockedSlots.includes(null)) {
-          btn.classList.add('booked');
+          btn.classList.add('unavailable');
           btn.disabled = true;
           btn.textContent = time + ' (Unavailable)';
         }
 
-        // 🔥 BLOCKED SLOT
-        else if (blockedSlots.includes(time)) {
-          btn.classList.add('booked');
+        // 🔥 PRIORITY 2: BLOCKED SLOT
+        else if (blockedSlots.map(t => t && t.trim()).includes(time.trim())) {
+          btn.classList.add('unavailable');
           btn.disabled = true;
           btn.textContent = time + ' (Unavailable)';
         }
 
-        // 🔥 BOOKED SLOTS (PATIENTS)
+        // 🔥 PRIORITY 3: BOOKED SLOT
         else if (bookedSlots.includes(time)) {
           btn.classList.add('booked');
           btn.disabled = true;
-          btn.title = 'Already booked';
           btn.textContent = time + ' (Booked)';
         }
 
@@ -859,6 +894,32 @@
         grid.appendChild(btn);
       });
     }
+
+    function updateSlotsNote() {
+      const note = document.getElementById('slotsNote');
+      const hasBookedSlots = actualBookedSlots.length > 0;
+      const hasBlockedSlots = blockedSlots.length > 0;
+
+      if (!hasBookedSlots && !hasBlockedSlots) {
+        note.style.display = 'none';
+        note.innerHTML = '';
+        return;
+      }
+
+      const items = [];
+
+      if (hasBookedSlots) {
+        items.push('<span class="slot-indicator booked">10:30</span> = Already booked');
+      }
+
+      if (hasBlockedSlots) {
+        items.push('<span class="slot-indicator unavailable">10:30</span> = Unavailable');
+      }
+
+      note.innerHTML = items.join(' ');
+      note.style.display = 'block';
+    }
+
 
     function isValidPhone(phone) {
       const cleaned = phone.replace(/\s+/g, '');
@@ -907,6 +968,8 @@
         selectedTime = null;
 
         await loadSlots(selectedDate);
+        // 🔥 FORCE RE-RENDER (IMPORTANT)
+        renderSlots();
         // 🔥 CLEAR UI SELECTION
         document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
 
@@ -1057,6 +1120,12 @@
 
       // 🟢 Subtitle
       document.querySelector('.booking-sub').innerText = "Select date and block slots.";
+    }
+
+    // 🔥 HIDE BLOCK BUTTON FOR USERS
+    if (!isAdminBlock) {
+      const btn = document.getElementById('blockFullDayBtn');
+      if (btn) btn.style.display = 'none';
     }
 
     buildDatePicker();
