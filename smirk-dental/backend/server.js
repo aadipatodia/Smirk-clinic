@@ -124,14 +124,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ── Serve frontend in production ──
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
-  });
-}
-
 // ── 404 handler ──
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} not found` });
