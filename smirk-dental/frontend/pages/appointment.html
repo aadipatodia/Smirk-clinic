@@ -543,7 +543,7 @@
         <strong>Opposite Delhi Public School (DPS)</strong><br>
         Vasant Kunj, New Delhi – 110070
         <div style="margin-top:1rem">
-          <a href="https://www.google.com/maps?q=28.5248,77.1589&z=18" target="_blank"
+          <a href="https://www.google.com/maps/place/Smirk+Dental+Clinic+and+Implant+Centre+Vasant+Kunj/@28.5376204,77.1435609,17z/data=!3m1!4b1!4m6!3m5!1s0x390d1dc8b99bb661:0x737cb6a44d105000!8m2!3d28.5376204!4d77.1461412!16s%2Fg%2F11hdjb2c9k" target="_blank"
             class="btn btn-primary btn-sm" style="width:100%;justify-content:center">
             <i class="fas fa-directions"></i> Get Directions
           </a>
@@ -552,7 +552,17 @@
     </div>
 
     <!-- ── BOOKING FORM ── -->
-    <div class="fade-up fade-up-delay-1">
+    <div class="fade-up fade-up-delay-1" id="bookingColumn">
+      <div id="loginGate" class="booking-card" style="display:none;text-align:center">
+        <div class="booking-title">Log in to book</div>
+        <p class="booking-sub" style="margin-bottom:1.25rem">Sign in with your name and phone. Booking is only
+          available to registered patients.</p>
+        <button type="button" class="btn btn-primary btn-lg"
+          style="width:100%;justify-content:center;margin-bottom:0.75rem"
+          onclick="document.getElementById('loginModal').style.display='flex'">Log in or create account</button>
+        <a href="../index.html" class="btn btn-secondary" style="width:100%;justify-content:center">Back to home</a>
+      </div>
+      <div id="bookingFlow">
       <div class="booking-card">
         <!-- Step indicator -->
         <div class="step-indicator">
@@ -638,19 +648,30 @@
         </div>
         <a href="../index.html" class="btn btn-secondary">Back to Home</a>
       </div>
+      </div>
     </div>
-  </div>
   </div>
 
   <footer class="footer">
     <div class="container">
       <div class="footer-bottom" style="border-top:none;padding-top:0">
         <span>© 2025 Smirk Dental Clinic & Implant Centre</span>
-        <a href="https://www.google.com/maps?q=28.5248,77.1589&z=18" target="_blank"
+        <a href="https://www.google.com/maps/place/Smirk+Dental+Clinic+and+Implant+Centre+Vasant+Kunj/@28.5376204,77.1435609,17z/data=!3m1!4b1!4m6!3m5!1s0x390d1dc8b99bb661:0x737cb6a44d105000!8m2!3d28.5376204!4d77.1461412!16s%2Fg%2F11hdjb2c9k" target="_blank"
           class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
       </div>
     </div>
   </footer>
+
+  <div id="loginModal" class="login-overlay">
+    <div class="login-box">
+      <h2>Welcome 👋</h2>
+      <p>Enter your details to book</p>
+      <input id="loginName" placeholder="Full Name" />
+      <input id="loginPhone" placeholder="Phone Number" />
+      <button onclick="loginUser()">Continue</button>
+      <span class="close-btn" onclick="closeLogin()">✖</span>
+    </div>
+  </div>
 
   <script src="../js/shared.js"></script>
   <script>
@@ -665,18 +686,24 @@
     const rescheduleId = localStorage.getItem('rescheduleId');
     let currentUserSlot = null;
 
+    const needsLogin = !isAdminBlock && !(user && user._id && user.phone);
+
     document.addEventListener('DOMContentLoaded', () => {
+      if (needsLogin) return;
       if (user.name) {
         document.getElementById('patientName').value = user.name;
       }
 
       if (user.phone) {
-        document.getElementById('patientPhone').value = user.phone;
+        const ph = document.getElementById('patientPhone');
+        ph.value = user.phone;
+        ph.readOnly = true;
       }
     });
 
     // 🔥 AUTO-FILL FROM URL (FIXED)
     document.addEventListener('DOMContentLoaded', () => {
+      if (needsLogin) return;
       const params = new URLSearchParams(window.location.search);
 
       const phone = params.get("phone");
@@ -1061,6 +1088,12 @@
         if (!selectedTime) { showErr('Please select a time slot.'); return; }
       }
 
+      const sessionUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!isAdminBlock && !(sessionUser && sessionUser._id && sessionUser.phone)) {
+        showErr('Please log in to book or reschedule.');
+        return;
+      }
+
       if (!name) { showErr('Please enter your full name.'); return; }
       if (!isValidPhone(phone)) {
         showErr('Enter valid Indian phone number');
@@ -1083,7 +1116,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               date: selectedDate,
-              time: selectedTime
+              time: selectedTime,
+              userId: sessionUser._id,
             })
           });
 
@@ -1097,7 +1131,8 @@
               name,
               phone,
               date: selectedDate,
-              time: selectedTime
+              time: selectedTime,
+              userId: sessionUser._id,
             })
           });
         }
@@ -1162,7 +1197,14 @@
 
     // ── INIT ──
     window.injectNav();
-    updateAuthButton();
+
+    if (needsLogin) {
+      document.getElementById('loginGate').style.display = 'block';
+      document.getElementById('bookingFlow').style.display = 'none';
+    } else {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('bookingFlow').style.display = '';
+    }
 
     // 🔥 ADMIN MODE UI
     if (isAdminBlock) {
@@ -1208,12 +1250,14 @@
       if (btn) btn.style.display = 'none';
     }
 
-    buildDatePicker();
-    // 🔥 FORCE FIRST DATE CLICK (FIX DATE NOT LOADING)
-    setTimeout(() => {
-      const first = document.querySelector('.date-btn');
-      if (first) first.click();
-    }, 100);
+    if (!needsLogin) {
+      buildDatePicker();
+      // 🔥 FORCE FIRST DATE CLICK (FIX DATE NOT LOADING)
+      setTimeout(() => {
+        const first = document.querySelector('.date-btn');
+        if (first) first.click();
+      }, 100);
+    }
   </script>
 </body>
 

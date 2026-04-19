@@ -16,7 +16,7 @@ const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 
 const CLINIC_MAPS_URL =
   process.env.CLINIC_MAPS_URL ||
-  'https://www.google.com/maps?q=28.5248,77.1589&z=18';
+  'https://www.google.com/maps/place/Smirk+Dental+Clinic+and+Implant+Centre+Vasant+Kunj/@28.5376204,77.1435609,17z/data=!3m1!4b1!4m6!3m5!1s0x390d1dc8b99bb661:0x737cb6a44d105000!8m2!3d28.5376204!4d77.1461412!16s%2Fg%2F11hdjb2c9k';
 
 const RVW_RE = /^RVW:([1-5]):([a-f\d]{24})$/i;
 const P_A_RE = /^P_A:([a-f\d]{24})$/i;

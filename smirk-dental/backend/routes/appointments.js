@@ -5,15 +5,18 @@
 // ─────────────────────────────────────────────
 
 const express = require('express');
+const mongoose = require('mongoose');
 const { body, query, validationResult } = require('express-validator');
 const router = express.Router();
 const Appointment = require('../models/Appointment');
+const User = require('../models/User');
 const { sendWhatsAppMessage } = require('../services/whatsapp');
 const {
   VALID_SLOTS,
   isValidAppointmentDate,
   getBookedAndBlockedForDate,
   createAppointment,
+  phoneDigits,
 } = require('../services/appointmentService');
 
 const validate = (rules) => [
@@ -89,12 +92,36 @@ router.post(
         if (!VALID_SLOTS.includes(t)) throw new Error('Invalid time slot');
         return true;
       }),
+    body('userId')
+      .trim()
+      .notEmpty()
+      .withMessage('Please log in to book an appointment')
+      .isMongoId()
+      .withMessage('Please log in to book an appointment'),
   ]),
   async (req, res) => {
-    const { name, phone, date, time, notes } = req.body;
+    const { name, phone, date, time, notes, userId } = req.body;
 
     try {
-      const appointment = await createAppointment({ name, phone, date, time, notes });
+      const account = await User.findById(userId).lean();
+      if (!account) {
+        return res.status(401).json({ success: false, message: 'Please log in again to book.' });
+      }
+      if (phoneDigits(account.phone) !== phoneDigits(phone)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Phone number must match your logged-in account.',
+        });
+      }
+
+      const appointment = await createAppointment({
+        name,
+        phone,
+        date,
+        time,
+        notes,
+        userId: account._id,
+      });
 
       if (process.env.WHATSAPP_TOKEN) {
         try {
@@ -179,7 +206,23 @@ router.put('/:id/cancel', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const { date, time } = req.body;
+    const { date, time, userId } = req.body;
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(401).json({ success: false, message: 'Please log in to reschedule.' });
+    }
+    const account = await User.findById(userId).lean();
+    if (!account) {
+      return res.status(401).json({ success: false, message: 'Please log in again.' });
+    }
+
+    const appt = await Appointment.findById(req.params.id).lean();
+    if (!appt) {
+      return res.status(404).json({ success: false, message: 'Appointment not found.' });
+    }
+    if (phoneDigits(appt.phone) !== phoneDigits(account.phone)) {
+      return res.status(403).json({ success: false, message: 'You can only reschedule your own appointment.' });
+    }
 
     const existing = await Appointment.findOne({
       date,
