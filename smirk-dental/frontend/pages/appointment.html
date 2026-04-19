@@ -240,6 +240,19 @@
       margin-top: 0.6rem;
     }
 
+    .slot-break {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--grey);
+      padding: 0.4rem 0.35rem;
+      margin: 0.1rem 0 0.35rem;
+      border-top: 1px dashed rgba(42, 175, 169, 0.4);
+      border-bottom: 1px dashed rgba(42, 175, 169, 0.25);
+      letter-spacing: 0.02em;
+    }
+
     .slot-btn {
       border: 1.5px solid rgba(42, 175, 169, 0.2);
       border-radius: var(--r-sm);
@@ -658,8 +671,12 @@
       }
     });
 
+    // Must match backend services/appointmentService.js VALID_SLOTS (2–3 PM break, no slots).
     const ALL_SLOTS = [
-      '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM'
+      '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+      '12:00 PM', '12:30 PM', '01:00 PM',
+      '01:45 PM', '03:15 PM', '03:45 PM',
+      '04:15 PM', '04:45 PM', '05:15 PM', '05:45 PM', '06:15 PM', '06:30 PM',
     ];
 
     let selectedDate = null;
@@ -669,6 +686,24 @@
     let bookedSlots = [];
     let blockedSlots = [];
 
+    /** YYYY-MM-DD for the user's *local* calendar day (matches date button label; avoids UTC shift from toISOString). */
+    function formatLocalYMD(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function isFullDayBlocked(slots) {
+      return Array.isArray(slots) && slots.some((b) => b === null || b === undefined);
+    }
+
+    function isTimeSlotBlocked(time, slots) {
+      if (!Array.isArray(slots) || !slots.length) return false;
+      if (isFullDayBlocked(slots)) return true;
+      const t = String(time).trim();
+      return slots.some((b) => b != null && String(b).trim() === t);
+    }
 
     // 🔥 FIX: SET BEFORE DATE PICKER
     if (isReschedule && rescheduleId) {
@@ -712,6 +747,7 @@
       const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const today = new Date();
+      let autoSelectedFirst = false;
 
       for (let i = 0; i < 14; i++) {
         const d = new Date(today);
@@ -726,7 +762,7 @@
           <span class="date-num">${d.getDate()}</span>
           <span class="date-month">${months[d.getMonth()]}</span>
         `;
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = formatLocalYMD(d);
         btn.dataset.date = dateStr;
 
         btn.addEventListener('click', () => {
@@ -745,8 +781,9 @@
           setTimeout(() => loadSlots(dateStr), 100);
         }
 
-        // 🔥 NORMAL FLOW: SELECT FIRST DATE
-        else if (!selectedDate && i === 0) {
+        // NORMAL FLOW: select first visible weekday (not only loop index 0 — week may start Sunday)
+        else if (!selectedDate && !autoSelectedFirst) {
+          autoSelectedFirst = true;
           btn.classList.add('selected');
           selectedDate = dateStr;
           setTimeout(() => loadSlots(dateStr), 100);
@@ -774,8 +811,8 @@
 
         blockedSlots = data.blockedSlots || [];
 
-        // 🔥 FULL DAY BLOCK
-        if (blockedSlots.includes(null)) {
+        // Full day block: treat every slot as taken for *booking* availability (optional safety).
+        if (isFullDayBlocked(blockedSlots)) {
           bookedSlots = [...ALL_SLOTS];
         }
         console.log("BLOCKED:", blockedSlots);
@@ -806,6 +843,15 @@
       return date;
     }
 
+    /** Minutes from midnight for ordering (12h time string). */
+    function slotMinutesFromMidnight(timeStr) {
+      const [t, modifier] = timeStr.split(' ');
+      let [hours, minutes] = t.split(':').map(Number);
+      if (modifier === 'PM' && hours !== 12) hours += 12;
+      if (modifier === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    }
+
     function renderSlots() {
       const grid = document.getElementById('slotsGrid');
       grid.innerHTML = '';
@@ -814,7 +860,19 @@
         new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
       );
 
+      const BREAK_END_MIN = 15 * 60; /* 3:00 PM — first bookable slot starts at or after this */
+
+      let prevSlotMinutes = null;
       ALL_SLOTS.forEach(time => {
+        const curMin = slotMinutesFromMidnight(time);
+        if (prevSlotMinutes !== null && curMin >= BREAK_END_MIN && prevSlotMinutes < BREAK_END_MIN) {
+          const br = document.createElement('div');
+          br.className = 'slot-break';
+          br.textContent = 'Break: 2:00 – 3:00 PM';
+          br.setAttribute('role', 'presentation');
+          grid.appendChild(br);
+        }
+        prevSlotMinutes = curMin;
         const btn = document.createElement('button');   // 🔥 MISSING LINE
         btn.type = 'button';
         btn.className = 'slot-btn';
@@ -844,15 +902,15 @@
           });
         }
 
-        // 🔥 PRIORITY 1: FULL DAY BLOCK
-        if (blockedSlots.includes(null)) {
+        // PRIORITY 1: FULL DAY BLOCK
+        if (isFullDayBlocked(blockedSlots)) {
           btn.classList.add('unavailable');
           btn.disabled = true;
           btn.textContent = time + ' (Unavailable)';
         }
 
-        // 🔥 PRIORITY 2: BLOCKED SLOT
-        else if (blockedSlots.map(t => t && t.trim()).includes(time.trim())) {
+        // PRIORITY 2: BLOCKED SLOT (single time)
+        else if (isTimeSlotBlocked(time, blockedSlots)) {
           btn.classList.add('unavailable');
           btn.disabled = true;
           btn.textContent = time + ' (Unavailable)';

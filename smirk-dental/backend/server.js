@@ -21,10 +21,12 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 const unavailableRouter = require('./routes/unavailable');
-app.use('/unavailable', unavailableRouter);
 
 console.log("ENV:", process.env.MONGODB_URI);
-app.use('/webhook', webhookRouter);
+
+function captureRawBody(req, res, buf) {
+  req.rawBody = buf;
+}
 
 // ── SECURITY MIDDLEWARE ──
 app.use(helmet({
@@ -48,8 +50,12 @@ app.use(cors({
 }));
 
 // ── BODY PARSING ──
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '256kb', verify: captureRawBody }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// WhatsApp Cloud API (needs parsed JSON + raw body for optional signature verify)
+app.use('/webhook', webhookRouter);
+app.use('/unavailable', unavailableRouter);
 
 // ── RATE LIMITING ──
 const apiLimiter = rateLimit({

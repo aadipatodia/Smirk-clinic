@@ -42,7 +42,27 @@ const appointmentSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
-    }
+    },
+    reminder24hSent: {
+      type: Boolean,
+      default: false,
+    },
+    reminder1hSent: {
+      type: Boolean,
+      default: false,
+    },
+    reviewRequestSent: {
+      type: Boolean,
+      default: false,
+    },
+    reviewRating: {
+      type: Number,
+      min: 1,
+      max: 5,
+    },
+    reviewSubmittedAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,   // adds createdAt and updatedAt

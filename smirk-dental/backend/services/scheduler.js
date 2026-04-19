@@ -1,6 +1,8 @@
 const cron = require('node-cron');
 const Appointment = require('../models/Appointment');
 const { sendWhatsAppMessage } = require('./whatsapp');
+const { runAppointmentReminders } = require('./reminderJobs');
+const { runCheckupReminders } = require('./checkupReminderJobs');
 
 function formatDate(date) {
     return date.toISOString().split('T')[0];
@@ -50,6 +52,28 @@ function startScheduler() {
         }
     }, {
         timezone: "Asia/Kolkata"
+    });
+
+    // Patient reminders (~24h and ~1h before appointment, IST wall clock)
+    cron.schedule('*/15 * * * *', async () => {
+        try {
+            await runAppointmentReminders();
+        } catch (err) {
+            console.error('❌ Reminder job error:', err.message);
+        }
+    }, {
+        timezone: 'Asia/Kolkata',
+    });
+
+    // Periodic checkup / follow-up nudge (Mondays 9:00 IST)
+    cron.schedule('0 9 * * 1', async () => {
+        try {
+            await runCheckupReminders();
+        } catch (err) {
+            console.error('❌ Checkup reminder job:', err.message);
+        }
+    }, {
+        timezone: 'Asia/Kolkata',
     });
 }
 
