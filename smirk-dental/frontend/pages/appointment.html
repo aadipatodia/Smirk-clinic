@@ -655,8 +655,9 @@
     <div class="login-box">
       <h2>Log in</h2>
       <p>Enter the name and phone you use at the clinic. After logging in you can confirm your booking.</p>
-      <input id="loginName" placeholder="Full Name" />
-      <input id="loginPhone" placeholder="Phone Number" />
+      <input id="loginName" placeholder="Full Name" autocomplete="name" />
+      <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="18"
+        placeholder="+91 98765 43210 or 9876543210" />
       <button onclick="loginUser()">Continue</button>
       <span class="close-btn" onclick="closeLogin()">✖</span>
     </div>

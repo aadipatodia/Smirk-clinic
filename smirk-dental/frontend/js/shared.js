@@ -2,15 +2,44 @@
    SMIRK DENTAL — Shared JS (nav, footer, utils)
 ═══════════════════════════════════════════ */
 
+/**
+ * Normalizes Indian mobile input to +91XXXXXXXXXX, or null if invalid.
+ * Accepts: 9876543210, 09876543210, 919876543210, +91 98765 43210, etc.
+ */
+window.normalizeIndianMobile = function (input) {
+  let d = String(input ?? '')
+    .replace(/\s/g, '')
+    .replace(/\D/g, '');
+  if (!d) return null;
+  if (d.length === 11 && d.startsWith('0')) d = d.slice(1);
+  if (d.length === 12 && d.startsWith('91')) d = d.slice(2);
+  else if (d.length > 10) return null;
+  if (d.length !== 10 || !/^[6-9]\d{9}$/.test(d)) return null;
+  return '+91' + d;
+};
+
 window.closeLogin = function () {
-  document.getElementById('loginModal').style.display = 'flex';
+  const m = document.getElementById('loginModal');
+  if (m) m.style.display = 'none';
 };
 
 window.loginUser = async function () {
-  const name = document.getElementById('loginName').value;
-  const phone = document.getElementById('loginPhone').value;
+  const name = String(document.getElementById('loginName').value || '').trim();
+  const phoneRaw = document.getElementById('loginPhone').value;
+  const phone = window.normalizeIndianMobile(phoneRaw);
 
-  console.log("LOGIN CLICKED", name, phone);
+  if (!name) {
+    if (typeof showToast === 'function') showToast('Please enter your full name.', 'error');
+    else alert('Please enter your full name.');
+    return;
+  }
+  if (!phone) {
+    const msg =
+      'Enter a valid Indian mobile number (10 digits starting with 6–9), e.g. 9876543210, +91 98765 43210, or 919876543210.';
+    if (typeof showToast === 'function') showToast(msg, 'error', 5000);
+    else alert(msg);
+    return;
+  }
 
   try {
     const res = await fetch('https://smirk-clinic.onrender.com/user/login', {
@@ -19,27 +48,25 @@ window.loginUser = async function () {
       body: JSON.stringify({ name, phone })
     });
 
-    console.log("RAW RESPONSE:", res);
-
-    const data = await res.json();
-
-    console.log("LOGIN RESPONSE:", data);
+    const data = await res.json().catch(() => ({}));
 
     if (data.success) {
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      document.getElementById('loginModal').style.display = 'none';
+      const m = document.getElementById('loginModal');
+      if (m) m.style.display = 'none';
 
-      showToast("Logged in successfully ✅");
-
+      if (typeof showToast === 'function') showToast('Logged in successfully ✅');
       location.reload();
     } else {
-      alert("Login failed");
+      const msg = data.message || 'Login failed';
+      if (typeof showToast === 'function') showToast(msg, 'error', 5000);
+      else alert(msg);
     }
-
   } catch (err) {
-    console.error("LOGIN ERROR:", err);
-    alert("Login error — check console");
+    console.error('LOGIN ERROR:', err);
+    if (typeof showToast === 'function') showToast('Login error — try again.', 'error');
+    else alert('Login error — try again.');
   }
 };
 
@@ -220,10 +247,6 @@ window.injectNav = function (activePage) {
 
   document.body.appendChild(banner);
 })();
-
-window.closeLogin = function () {
-  document.getElementById('loginModal').style.display = 'none';
-};
 
 async function loadUserAppointment() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
