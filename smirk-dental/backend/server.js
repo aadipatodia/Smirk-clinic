@@ -38,7 +38,11 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 app.use(cors({
-  origin: true
+  origin: [
+    "https://smirk-clinic.vercel.app"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
 }));
 
 // ── BODY PARSING ──
