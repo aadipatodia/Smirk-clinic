@@ -670,7 +670,7 @@
 <script>
   async function loadReviews() {
     try {
-      const res = await fetch('http://localhost:5001/reviews');
+      const res = await fetch('https://smirk-clinic.onrender.com/reviews');
       const data = await res.json();
 
       if (!data.success) return;

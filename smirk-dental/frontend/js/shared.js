@@ -13,7 +13,7 @@ window.loginUser = async function () {
   console.log("LOGIN CLICKED", name, phone);
 
   try {
-    const res = await fetch('http://localhost:5001/user/login', {
+    const res = await fetch('https://smirk-clinic.onrender.com/user/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, phone })
@@ -204,7 +204,7 @@ async function loadUserAppointment() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   if (!user._id) return;
 
-  const res = await fetch(`http://localhost:5001/appointments/user/${user._id}`);
+  const res = await fetch(`https://smirk-clinic.onrender.com/appointments/user/${user._id}`);
   const data = await res.json();
 
   if (!data.success || !data.appointments.length) return;
@@ -217,7 +217,7 @@ async function loadUserAppointment() {
 window.cancelAppointment = async function (id) {
   if (!confirm("Cancel appointment?")) return;
 
-  await fetch(`http://localhost:5001/appointments/${id}`, {
+  await fetch(`https://smirk-clinic.onrender.com/appointments/${id}`, {
     method: 'DELETE'
   });
 
