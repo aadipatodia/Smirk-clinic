@@ -15,7 +15,8 @@ const Appointment = require('../../../models/Appointment');
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 
 const CLINIC_MAPS_URL =
-  process.env.CLINIC_MAPS_URL || 'https://maps.google.com/?q=Smirk+Dental';
+  process.env.CLINIC_MAPS_URL ||
+  'https://www.google.com/maps?q=28.5248,77.1589&z=18';
 
 const RVW_RE = /^RVW:([1-5]):([a-f\d]{24})$/i;
 const P_A_RE = /^P_A:([a-f\d]{24})$/i;

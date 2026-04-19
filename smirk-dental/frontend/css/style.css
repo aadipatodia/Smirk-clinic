@@ -281,6 +281,20 @@ button, input, textarea, select { font-family: inherit; }
   font-weight: 500;
   color: var(--grey);
 }
+.mobile-menu a.mobile-menu-login {
+  margin: 0.35rem 1rem 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--r-md);
+  background: var(--mist);
+  border: 1px solid rgba(42, 175, 169, 0.22);
+  text-align: center;
+  color: var(--navy);
+}
+.mobile-menu a.mobile-menu-login:hover {
+  color: var(--teal-deep);
+  padding-left: 1.25rem;
+  background: var(--teal-glow);
+}
 
 /* ── PAGE HERO (reusable) ── */
 .page-hero {

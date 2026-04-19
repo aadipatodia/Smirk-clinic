@@ -153,7 +153,7 @@ window.injectNav = function (activePage) {
   let mobileExtras = `
     <a href="${apptFullHref}" class="mobile-menu-cta"><i class="fas fa-calendar-check"></i> Book Appointment</a>`;
   if (document.getElementById('loginModal')) {
-    mobileExtras += `<a href="#" class="mobile-menu-extra" id="navMobileLogin">Login</a>`;
+    mobileExtras += `<a href="#" class="mobile-menu-extra mobile-menu-login" id="navMobileLogin">Login</a>`;
   }
   if (!isInPages) {
     mobileExtras += `<a href="${adminHref}" class="mobile-menu-extra mobile-menu-extra--muted">Admin Panel</a>`;
@@ -161,7 +161,8 @@ window.injectNav = function (activePage) {
 
   document.getElementById('navLinks').innerHTML = links;
   const menuEl = document.getElementById('mobileMenu');
-  menuEl.innerHTML = mobileLinks + mobileExtras;
+  /* Book / Login / Admin first so they stay visible without scrolling past every page link */
+  menuEl.innerHTML = mobileExtras + mobileLinks;
 
   const mobLogin = document.getElementById('navMobileLogin');
   if (mobLogin) {

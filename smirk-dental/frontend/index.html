@@ -1003,7 +1003,7 @@
       </div>
       <div class="footer-bottom">
         <span>© 2025 Smirk Dental Clinic & Implant Centre. All rights reserved.</span>
-        <a href="https://www.google.com/maps/search/?api=1&query_place_id=ChIJYbabucgdDTkRAFAQTaS2fHM" target="_blank"
+        <a href="https://www.google.com/maps?q=28.5248,77.1589&z=18" target="_blank"
           rel="noopener noreferrer" class="footer-google-badge">
           <i class="fab fa-google"></i> Rate us on Google
         </a>
@@ -1017,16 +1017,13 @@
   </a>
 
   <!-- ⭐ FLOATING GOOGLE REVIEW BUTTON -->
-  <a href="https://www.google.com/maps/search/?api=1&query_place_id=ChIJYbabucgdDTkRAFAQTaS2fHM" target="_blank"
+  <a href="https://www.google.com/maps?q=28.5248,77.1589&z=18" target="_blank"
     rel="noopener noreferrer" class="btn btn-primary floating-review">
     ⭐ Rate Us
   </a>
 
   <script src="js/shared.js"></script>
-  <script>
-    window.injectNav('');
-  </script>
-  <!-- LOGIN MODAL -->
+  <!-- LOGIN MODAL (must be before injectNav so mobile Login row is created) -->
   <div id="loginModal" class="login-overlay">
     <div class="login-box">
       <h2>Welcome Back 👋</h2>
@@ -1040,6 +1037,9 @@
       <span class="close-btn" onclick="closeLogin()">✖</span>
     </div>
   </div>
+  <script>
+    window.injectNav('');
+  </script>
 </body>
 
 </html>
