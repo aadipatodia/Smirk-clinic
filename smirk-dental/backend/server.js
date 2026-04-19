@@ -7,17 +7,17 @@ require('dotenv').config();
 
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const cors = require("cors");
 
 
 const { startScheduler } = require('./services/scheduler');
 const appointmentsRouter = require('./routes/appointments');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 const unavailableRouter = require('./routes/unavailable');
 app.use('/unavailable', unavailableRouter);
