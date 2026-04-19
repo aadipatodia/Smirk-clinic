@@ -320,3 +320,25 @@ window.rescheduleAppointment = function (id) {
 };
 
 loadUserAppointment();
+
+// ── Book Appointment → open login on arrival if not signed in (`?login=1`) ──
+(function attachBookAppointmentLoginParam() {
+  function run() {
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    if (u && u._id && u.phone) return;
+    document.querySelectorAll('a[href*="appointment"]').forEach((a) => {
+      const h = a.getAttribute('href');
+      if (!h || h.includes('adminBlock')) return;
+      try {
+        const abs = new URL(h, window.location.href);
+        if (abs.searchParams.has('login')) return;
+        abs.searchParams.set('login', '1');
+        a.setAttribute('href', abs.pathname + abs.search + (abs.hash || ''));
+      } catch (e) {
+        /* ignore bad href */
+      }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+})();

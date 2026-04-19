@@ -552,17 +552,7 @@
     </div>
 
     <!-- ── BOOKING FORM ── -->
-    <div class="fade-up fade-up-delay-1" id="bookingColumn">
-      <div id="loginGate" class="booking-card" style="display:none;text-align:center">
-        <div class="booking-title">Log in to book</div>
-        <p class="booking-sub" style="margin-bottom:1.25rem">Sign in with your name and phone. Booking is only
-          available to registered patients.</p>
-        <button type="button" class="btn btn-primary btn-lg"
-          style="width:100%;justify-content:center;margin-bottom:0.75rem"
-          onclick="document.getElementById('loginModal').style.display='flex'">Log in or create account</button>
-        <a href="../index.html" class="btn btn-secondary" style="width:100%;justify-content:center">Back to home</a>
-      </div>
-      <div id="bookingFlow">
+    <div class="fade-up fade-up-delay-1">
       <div class="booking-card">
         <!-- Step indicator -->
         <div class="step-indicator">
@@ -648,7 +638,6 @@
         </div>
         <a href="../index.html" class="btn btn-secondary">Back to Home</a>
       </div>
-      </div>
     </div>
   </div>
 
@@ -664,8 +653,8 @@
 
   <div id="loginModal" class="login-overlay">
     <div class="login-box">
-      <h2>Welcome 👋</h2>
-      <p>Enter your details to book</p>
+      <h2>Log in</h2>
+      <p>Enter the name and phone you use at the clinic. After logging in you can confirm your booking.</p>
       <input id="loginName" placeholder="Full Name" />
       <input id="loginPhone" placeholder="Phone Number" />
       <button onclick="loginUser()">Continue</button>
@@ -686,15 +675,12 @@
     const rescheduleId = localStorage.getItem('rescheduleId');
     let currentUserSlot = null;
 
-    const needsLogin = !isAdminBlock && !(user && user._id && user.phone);
-
     document.addEventListener('DOMContentLoaded', () => {
-      if (needsLogin) return;
-      if (user.name) {
+      if (user && user.name) {
         document.getElementById('patientName').value = user.name;
       }
 
-      if (user.phone) {
+      if (user && user.phone) {
         const ph = document.getElementById('patientPhone');
         ph.value = user.phone;
         ph.readOnly = true;
@@ -703,7 +689,6 @@
 
     // 🔥 AUTO-FILL FROM URL (FIXED)
     document.addEventListener('DOMContentLoaded', () => {
-      if (needsLogin) return;
       const params = new URLSearchParams(window.location.search);
 
       const phone = params.get("phone");
@@ -1089,8 +1074,16 @@
       }
 
       const sessionUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!isAdminBlock && !(sessionUser && sessionUser._id && sessionUser.phone)) {
-        showErr('Please log in to book or reschedule.');
+      const loggedIn = !!(sessionUser && sessionUser._id && sessionUser.phone);
+      if (!isAdminBlock && !loggedIn) {
+        sessionStorage.setItem('pendingBooking', JSON.stringify({
+          selectedDate,
+          selectedTime,
+          reschedule: !!isRescheduleFlow,
+        }));
+        const modal = document.getElementById('loginModal');
+        modal.style.display = 'flex';
+        modal.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
 
@@ -1195,16 +1188,74 @@
       el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    /** Restore date & time after user logs in (sessionStorage set when confirming without session). */
+    async function applyPendingBookingIfAny() {
+      const raw = sessionStorage.getItem('pendingBooking');
+      if (!raw) return false;
+      let p;
+      try {
+        p = JSON.parse(raw);
+      } catch (e) {
+        sessionStorage.removeItem('pendingBooking');
+        return false;
+      }
+      if (!p || !p.selectedDate) {
+        sessionStorage.removeItem('pendingBooking');
+        return false;
+      }
+
+      const dateBtn = document.querySelector('.date-btn[data-date="' + p.selectedDate + '"]');
+      if (!dateBtn) {
+        sessionStorage.removeItem('pendingBooking');
+        if (typeof showToast === 'function') {
+          showToast('That date is no longer on the calendar — please pick a new slot.', 'error', 5000);
+        }
+        return false;
+      }
+
+      document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
+      dateBtn.classList.add('selected');
+      selectedDate = p.selectedDate;
+      selectedTime = null;
+      await loadSlots(p.selectedDate);
+
+      const want = p.selectedTime;
+      if (want) {
+        const slotBtn = Array.from(document.querySelectorAll('.slot-btn')).find(b => {
+          const t = b.textContent.trim();
+          return t === want || t.startsWith(want + ' ');
+        });
+        if (slotBtn && !slotBtn.disabled) {
+          document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+          slotBtn.classList.add('selected');
+          selectedTime = want;
+        }
+      }
+
+      sessionStorage.removeItem('pendingBooking');
+      if (typeof showToast === 'function') {
+        showToast('You are logged in — your date and time are restored. Tap Confirm when ready.');
+      }
+      return true;
+    }
+
+    function openLoginModalIfBookQuery() {
+      if (isAdminBlock) return;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('login') !== '1') return;
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      params.delete('login');
+      const q = params.toString();
+      const clean = window.location.pathname + (q ? '?' + q : '') + window.location.hash;
+      history.replaceState({}, '', clean);
+      if (u && u._id && u.phone) return;
+      const modal = document.getElementById('loginModal');
+      if (modal) modal.style.display = 'flex';
+    }
+
     // ── INIT ──
     window.injectNav();
-
-    if (needsLogin) {
-      document.getElementById('loginGate').style.display = 'block';
-      document.getElementById('bookingFlow').style.display = 'none';
-    } else {
-      document.getElementById('loginGate').style.display = 'none';
-      document.getElementById('bookingFlow').style.display = '';
-    }
+    openLoginModalIfBookQuery();
 
     // 🔥 ADMIN MODE UI
     if (isAdminBlock) {
@@ -1250,14 +1301,14 @@
       if (btn) btn.style.display = 'none';
     }
 
-    if (!needsLogin) {
-      buildDatePicker();
-      // 🔥 FORCE FIRST DATE CLICK (FIX DATE NOT LOADING)
-      setTimeout(() => {
+    buildDatePicker();
+    setTimeout(async () => {
+      const restored = await applyPendingBookingIfAny();
+      if (!restored) {
         const first = document.querySelector('.date-btn');
         if (first) first.click();
-      }, 100);
-    }
+      }
+    }, 100);
   </script>
 </body>
 
