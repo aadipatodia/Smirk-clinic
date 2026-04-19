@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const webhookRouter = require('./routes/webhook');
 const cors = require("cors");
 
 
@@ -23,6 +24,7 @@ const unavailableRouter = require('./routes/unavailable');
 app.use('/unavailable', unavailableRouter);
 
 console.log("ENV:", process.env.MONGODB_URI);
+app.use('/webhook', webhookRouter);
 
 // ── SECURITY MIDDLEWARE ──
 app.use(helmet({

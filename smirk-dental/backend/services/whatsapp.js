@@ -8,11 +8,9 @@ const sendWhatsAppMessage = async (to, message) => {
             url,
             {
                 messaging_product: "whatsapp",
-                to: to.replace(/\D/g, ''), // clean number
+                to: to.replace(/\D/g, ''),
                 type: "text",
-                text: {
-                    body: message
-                }
+                text: { body: message }
             },
             {
                 headers: {
@@ -22,7 +20,7 @@ const sendWhatsAppMessage = async (to, message) => {
             }
         );
 
-        console.log("✅ WhatsApp sent");
+        console.log("✅ WhatsApp sent to", to);
 
     } catch (err) {
         console.error("❌ WhatsApp error:", err.response?.data || err.message);
