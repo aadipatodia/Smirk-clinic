@@ -585,10 +585,17 @@
             <i class="fas fa-clock" style="color:var(--teal)"></i> Select Time Slot
           </div>
 
-          <button id="blockFullDayBtn" onclick="blockFullDay()"
-            style="margin-bottom:10px;background:#ff9800;color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">
-            Block Full Day
-          </button>
+          <div id="adminDayActions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <button id="blockFullDayBtn" type="button" onclick="blockFullDay()"
+              style="background:#ff9800;color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">
+              Block Full Day
+            </button>
+            <button id="unblockFullDayBtn" type="button" onclick="unblockFullDay()"
+              style="display:none;background:var(--teal);color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;opacity:0.45"
+              disabled title="No full-day block on this date">
+              Unblock Full Day
+            </button>
+          </div>
 
           <div class="slots-grid" id="slotsGrid">
             <div class="slot-skeleton"></div>
@@ -775,6 +782,62 @@
       await loadSlots(selectedDate);
     }
 
+    async function unblockFullDay() {
+      if (!selectedDate) {
+        alert("Select a date first");
+        return;
+      }
+      if (!confirm("Remove full-day closure for " + selectedDate + "? Patients can book any slot again (except already booked).")) {
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/unavailable`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: selectedDate, time: null })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert(data.message || 'Could not unblock');
+          return;
+        }
+        alert("Full day unblocked");
+        await loadSlots(selectedDate);
+      } catch (e) {
+        alert("Network error");
+      }
+    }
+
+    async function unblockSlot(time) {
+      if (!selectedDate) return;
+      try {
+        const res = await fetch(`${API_BASE}/unavailable`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: selectedDate, time })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert(data.message || 'Could not unblock slot');
+          return;
+        }
+        await loadSlots(selectedDate);
+      } catch (e) {
+        alert("Network error");
+      }
+    }
+
+    function refreshAdminUnblockControls() {
+      if (!isAdminBlock) return;
+      const ubtn = document.getElementById('unblockFullDayBtn');
+      if (!ubtn) return;
+      ubtn.style.display = 'inline-block';
+      const full = isFullDayBlocked(blockedSlots);
+      ubtn.disabled = !full;
+      ubtn.style.opacity = full ? '1' : '0.45';
+      ubtn.title = full ? 'Remove full-day closure for this date' : 'No full-day block on this date';
+    }
+
     // ── BUILD DATE PICKER ──
     function buildDatePicker() {
       const container = document.getElementById('datePicker');
@@ -861,6 +924,7 @@
 
       renderSlots();
       updateSlotsNote();
+      refreshAdminUnblockControls();
     }
 
     function getISTDateTime(dateStr, timeStr) {
@@ -944,11 +1008,17 @@
           btn.textContent = time + ' (Unavailable)';
         }
 
-        // PRIORITY 2: BLOCKED SLOT (single time)
+        // PRIORITY 2: BLOCKED SLOT (single time) — admin can tap to unblock (not when whole day is blocked)
         else if (isTimeSlotBlocked(time, blockedSlots)) {
           btn.classList.add('unavailable');
-          btn.disabled = true;
-          btn.textContent = time + ' (Unavailable)';
+          if (isAdminBlock && !isFullDayBlocked(blockedSlots)) {
+            btn.disabled = false;
+            btn.textContent = time + ' (blocked — tap to unblock)';
+            btn.addEventListener('click', () => unblockSlot(time));
+          } else {
+            btn.disabled = true;
+            btn.textContent = time + ' (Unavailable)';
+          }
         }
 
         // 🔥 PRIORITY 3: BOOKED SLOT
@@ -1293,13 +1363,14 @@
       document.getElementById('successState').style.display = 'none';
 
       // 🟢 Subtitle
-      document.querySelector('.booking-sub').innerText = "Select date and block slots.";
+      document.querySelector('.booking-sub').innerText =
+        'Block slots with the orange button, or tap a blocked time to unblock. Use Unblock full day when the whole day was closed.';
     }
 
-    // 🔥 HIDE BLOCK BUTTON FOR USERS
+    // 🔥 HIDE BLOCK / UNBLOCK FOR NON-ADMIN
     if (!isAdminBlock) {
-      const btn = document.getElementById('blockFullDayBtn');
-      if (btn) btn.style.display = 'none';
+      const wrap = document.getElementById('adminDayActions');
+      if (wrap) wrap.style.display = 'none';
     }
 
     buildDatePicker();
