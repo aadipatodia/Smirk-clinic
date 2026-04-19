@@ -148,8 +148,32 @@ window.injectNav = function (activePage) {
     `<a href="${p.href}">${p.label}</a>`
   ).join('');
 
+  const apptFullHref = isInPages ? 'appointment.html' : 'pages/appointment.html';
+  const adminHref = isInPages ? 'admin.html' : 'pages/admin.html';
+  let mobileExtras = `
+    <a href="${apptFullHref}" class="mobile-menu-cta"><i class="fas fa-calendar-check"></i> Book Appointment</a>`;
+  if (document.getElementById('loginModal')) {
+    mobileExtras += `<a href="#" class="mobile-menu-extra" id="navMobileLogin">Login</a>`;
+  }
+  if (!isInPages) {
+    mobileExtras += `<a href="${adminHref}" class="mobile-menu-extra mobile-menu-extra--muted">Admin Panel</a>`;
+  }
+
   document.getElementById('navLinks').innerHTML = links;
-  document.getElementById('mobileMenu').innerHTML = mobileLinks;
+  const menuEl = document.getElementById('mobileMenu');
+  menuEl.innerHTML = mobileLinks + mobileExtras;
+
+  const mobLogin = document.getElementById('navMobileLogin');
+  if (mobLogin) {
+    mobLogin.addEventListener('click', (e) => {
+      e.preventDefault();
+      menuEl.classList.remove('open');
+      const hb = document.getElementById('hamburger');
+      if (hb) hb.setAttribute('aria-expanded', 'false');
+      const modal = document.getElementById('loginModal');
+      if (modal) modal.style.display = 'flex';
+    });
+  }
 };
 
 // ── FLOATING APPOINTMENT BANNER ──

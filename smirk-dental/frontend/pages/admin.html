@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin | Smirk Dental</title>
     <link rel="stylesheet" href="../css/style.css">
 
@@ -67,6 +68,50 @@
             border-radius: var(--r-lg);
             box-shadow: 0 6px 24px rgba(0, 0, 0, 0.05);
         }
+
+        .admin-stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .appt-list-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .appt-list-inner {
+            min-width: 720px;
+        }
+
+        .admin-filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 900px) {
+            .admin-container {
+                padding: 16px 14px;
+                margin: 24px auto;
+            }
+
+            .admin-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .admin-header>div {
+                flex-wrap: wrap;
+            }
+
+            .admin-stats-row {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
@@ -104,7 +149,7 @@
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:20px;">
+            <div class="admin-stats-row">
 
                 <div class="admin-card" style="padding:25px;">
                     <div style="font-size:0.8rem;color:gray;">Today</div>
@@ -123,24 +168,26 @@
 
             </div>
 
-            <div style="margin-bottom:15px;display:flex;gap:10px;">
+            <div class="admin-filter-row">
                 <button class="btn btn-sm btn-primary" onclick="setActive(this);filterData('all')">All</button>
                 <button class="btn btn-sm btn-secondary" onclick="setActive(this);filterData('today')">Today</button>
                 <button class="btn btn-sm btn-secondary"
                     onclick="setActive(this);filterData('upcoming')">Upcoming</button>
             </div>
 
-            <div class="admin-card">
-                <div class="appt-row header">
-                    <div>Name</div>
-                    <div>Phone</div>
-                    <div>Date</div>
-                    <div>Time</div>
-                    <div>Status</div>
-                    <div>Action</div>
-                </div>
+            <div class="admin-card appt-list-scroll">
+                <div class="appt-list-inner">
+                    <div class="appt-row header">
+                        <div>Name</div>
+                        <div>Phone</div>
+                        <div>Date</div>
+                        <div>Time</div>
+                        <div>Status</div>
+                        <div>Action</div>
+                    </div>
 
-                <div id="appointmentsList"></div>
+                    <div id="appointmentsList"></div>
+                </div>
             </div>
         </div>
     </div>

@@ -48,7 +48,11 @@
 
 /* ── RESET & BASE ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; font-size: 16px; }
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
 body {
   font-family: var(--font-body);
   background: var(--ivory);
@@ -141,6 +145,12 @@ button, input, textarea, select { font-family: inherit; }
   border: 1.5px solid var(--teal);
 }
 .btn-secondary:hover { background: var(--teal-glow); transform: translateY(-1px); }
+.btn-outline {
+  background: transparent;
+  color: var(--navy);
+  border: 1.5px solid rgba(15, 42, 56, 0.18);
+}
+.btn-outline:hover { background: var(--mist); transform: translateY(-1px); }
 .btn-gold {
   background: linear-gradient(135deg, var(--gold), #A87428);
   color: white;
@@ -244,6 +254,33 @@ button, input, textarea, select { font-family: inherit; }
   transition: all var(--t-fast);
 }
 .mobile-menu a:hover { color: var(--teal); background: var(--teal-glow); padding-left: 2rem; }
+.mobile-menu a.mobile-menu-cta {
+  margin: 0.65rem 1rem 0.35rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--r-pill);
+  text-align: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, var(--teal), var(--teal-deep));
+  border: none;
+  box-shadow: 0 4px 16px rgba(42, 175, 169, 0.35);
+}
+.mobile-menu a.mobile-menu-cta:hover {
+  color: white;
+  padding-left: 1.25rem;
+  filter: brightness(1.03);
+}
+.mobile-menu a.mobile-menu-extra {
+  font-weight: 600;
+  color: var(--teal-deep);
+  border-bottom: 1px solid rgba(42, 175, 169, 0.08);
+}
+.mobile-menu a.mobile-menu-extra--muted {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--grey);
+}
 
 /* ── PAGE HERO (reusable) ── */
 .page-hero {
@@ -377,15 +414,57 @@ button, input, textarea, select { font-family: inherit; }
 .toast.show    { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 
 /* ── RESPONSIVE ── */
+@media (max-width: 1100px) {
+  .navbar-inner { padding: 0 1.25rem; }
+}
+
 @media (max-width: 900px) {
   .footer-grid { grid-template-columns: 1fr 1fr; }
-  .nav-links, .nav-right .btn { display: none; }
-  .hamburger { display: block; }
+  .nav-links { display: none; }
+  .nav-right .btn { display: none; }
+  .hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mobile-menu {
+    top: 4.25rem;
+    max-height: calc(100vh - 4.5rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
+
 @media (max-width: 600px) {
   .footer-grid { grid-template-columns: 1fr; gap: 1.8rem; }
   .footer-bottom { flex-direction: column; text-align: center; }
   .page-hero { padding: 5.5rem 0 2.5rem; }
+  .navbar-inner { padding: 0 1rem; }
+  .nav-logo { font-size: 1.25rem; }
+  a.btn.floating-cta {
+    bottom: 1rem;
+    right: 1rem;
+    left: auto;
+    padding: 0.55rem 1rem;
+    font-size: 0.8rem;
+  }
+  a.btn.btn-primary.floating-review {
+    bottom: 4.75rem;
+    right: 1rem;
+    left: auto;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.78rem;
+  }
+  .toast {
+    white-space: normal;
+    max-width: calc(100vw - 2rem);
+    text-align: center;
+    padding: 0.75rem 1.2rem;
+  }
+}
+
+@media (max-width: 380px) {
+  a.btn.floating-cta { font-size: 0.72rem; padding: 0.5rem 0.75rem; }
 }
 
 .appt-banner {
@@ -393,7 +472,10 @@ button, input, textarea, select { font-family: inherit; }
   top: 70px; /* just below navbar */
   left: 50%;
   transform: translateX(-50%);
-  
+  max-width: min(560px, calc(100vw - 1.5rem));
+  width: max-content;
+  box-sizing: border-box;
+
   background: linear-gradient(135deg, #f97316, #fb923c);
   color: white;
 
@@ -405,7 +487,10 @@ button, input, textarea, select { font-family: inherit; }
 
   display: flex;
   align-items: center;
-  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px 15px;
+  text-align: center;
 
   box-shadow: 0 10px 25px rgba(0,0,0,0.15);
   z-index: 999;
@@ -426,6 +511,25 @@ button, input, textarea, select { font-family: inherit; }
 @keyframes slideDown {
   from { transform: translate(-50%, -20px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .appt-banner {
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    max-width: none;
+    transform: none;
+    border-radius: var(--r-lg);
+    font-size: 0.82rem;
+    padding: 12px 14px;
+    animation: slideDownMobile 0.4s ease;
+  }
+}
+
+@keyframes slideDownMobile {
+  from { transform: translateY(-12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 /* ═══════════════════════════════════════
