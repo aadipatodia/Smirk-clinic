@@ -201,12 +201,16 @@ function getNextBookableDates(maxDays = 14) {
 
 async function resolvePatientNameForWa(waDigits) {
   const d = String(waDigits).replace(/\D/g, '');
-  const user = await User.findOne({
+  const matches = await User.find({
     $or: [{ phone: new RegExp(`${d}$`) }, { phone: `+${d}` }],
   })
+    .select('name')
+    .limit(2)
     .lean()
-    .catch(() => null);
-  if (user?.name?.trim()) return user.name.trim().slice(0, 100);
+    .catch(() => []);
+  if (matches.length === 1 && matches[0]?.name?.trim()) {
+    return matches[0].name.trim().slice(0, 100);
+  }
   return `Patient ${d.slice(-4)}`;
 }
 

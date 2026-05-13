@@ -160,13 +160,15 @@ window.injectNav = function (activePage) {
   const isInPages = window.location.pathname.includes('/pages/');
   const base = isInPages ? '' : 'pages/';
   const homeBase = isInPages ? '../' : '';
+  const privacyHref = isInPages ? '../privacy-policy.html' : 'privacy-policy.html';
   const pages = [
     { href: homeBase + 'index.html', label: 'Home' },
     { href: base + 'services.html', label: 'Services' },
     { href: base + 'gallery.html', label: 'Gallery' },
     { href: base + 'doctor.html', label: 'Doctor' },
     { href: base + 'appointment.html', label: 'Appointment' },
-    { href: base + 'contact.html', label: 'Contact' }
+    { href: base + 'contact.html', label: 'Contact' },
+    { href: privacyHref, label: 'Privacy' }
   ];
   const links = pages.map(p =>
     `<li><a href="${p.href}" ${p.href === activePage ? 'class="active"' : ''}>${p.label}</a></li>`

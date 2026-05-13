@@ -33,12 +33,31 @@ router.post('/login', async (req, res) => {
     }
 
     const ten = normalized.slice(3);
-    let user = await User.findOne({
+    const storedName = name.slice(0, 100);
+    const phoneClause = {
       $or: [{ phone: normalized }, { phone: ten }, { phone: `91${ten}` }],
+    };
+
+    let user = await User.findOne({
+      $and: [phoneClause, { name: storedName }],
     });
 
     if (!user) {
-      user = await User.create({ name: name.slice(0, 100), phone: normalized });
+      try {
+        user = await User.create({ name: storedName, phone: normalized });
+      } catch (createErr) {
+        if (createErr.code === 11000) {
+          user = await User.findOne({
+            $and: [phoneClause, { name: storedName }],
+          });
+        } else {
+          throw createErr;
+        }
+      }
+    }
+
+    if (!user) {
+      return res.status(500).json({ success: false, message: 'Could not create or load account' });
     }
 
     res.json({
