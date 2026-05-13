@@ -34,19 +34,32 @@ app.use(helmet({
 }));
 
 // ── CORS ──
-const allowedOrigins = [
+const defaultCorsOrigins = [
   'http://localhost:3000',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+  'https://smirk-clinic.vercel.app',
+];
+
+function buildAllowedOrigins() {
+  const fromEnvList = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const front = process.env.FRONTEND_URL?.trim();
+  return [...new Set([...defaultCorsOrigins, ...fromEnvList, ...(front ? [front] : [])])];
+}
+
+const allowedOrigins = buildAllowedOrigins();
 
 app.use(cors({
-  origin: [
-    "https://smirk-clinic.vercel.app"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin not allowed: ${origin}`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
 }));
 
 // ── BODY PARSING ──
