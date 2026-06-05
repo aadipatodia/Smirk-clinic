@@ -61,12 +61,17 @@
 
         .login-box {
             max-width: 400px;
-            margin: 150px auto;
+            margin: 0 auto;
             padding: 30px;
             text-align: center;
             background: white;
             border-radius: var(--r-lg);
             box-shadow: 0 6px 24px rgba(0, 0, 0, 0.05);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
         }
 
         .admin-stats-row {
@@ -118,13 +123,13 @@
 <body style="background:#f4f7fb;">
 
     <div id="loginScreen" class="login-box">
-        <h2>Admin Login</h2>
-        <input type="password" id="adminPass" placeholder="Enter password" class="form-input" style="margin:15px 0;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:0.85rem;">
+        <h2 style="margin-bottom:20px;">Admin Login</h2>
+        <input type="password" id="adminPass" placeholder="Enter password" class="form-input" style="width:100%;margin-bottom:15px;">
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:20px;font-size:0.85rem;">
             <input type="checkbox" id="rememberMe">
             <label for="rememberMe">Stay logged in on this device</label>
         </div>
-        <button class="btn btn-primary" onclick="login()">Login</button>
+        <button class="btn btn-primary" onclick="login()" style="width:100%;padding:12px;font-size:1rem;">Login</button>
     </div>
 
     <div id="adminPanel" style="display:none">
@@ -139,7 +144,7 @@
                         Home
                     </a>
 
-                    <button onclick="openUnavailable()">Block Slots</button>
+                    <button class="btn btn-sm btn-outline" onclick="openUnavailable()">Block Slots</button>
 
                     <!-- 🔴 LOGOUT BUTTON -->
                     <button class="btn btn-sm btn-primary" onclick="logout()">
@@ -312,7 +317,7 @@
         }
 
         function setActive(btn) {
-            document.querySelectorAll('.btn-sm').forEach(b => {
+            document.querySelectorAll('.admin-filter-row .btn-sm').forEach(b => {
                 b.classList.remove('btn-primary');
                 b.classList.add('btn-secondary');
             });
