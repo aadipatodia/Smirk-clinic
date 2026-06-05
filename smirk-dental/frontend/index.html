@@ -700,7 +700,13 @@
 
       const container = document.getElementById('reviewsContainer');
 
-      container.innerHTML = data.reviews.slice(0, 3).map(r => `
+      const filtered = data.reviews.filter(r => {
+        const text = (r.text || '').toLowerCase();
+        const author = (r.author_name || '').toLowerCase();
+        return !text.includes('ankur') && !author.includes('ankur');
+      });
+
+      container.innerHTML = filtered.slice(0, 3).map(r => `
       <div class="review-card">
         <div class="review-stars">${'★'.repeat(r.rating)}</div>
         <p class="review-text">"${r.text}"</p>
