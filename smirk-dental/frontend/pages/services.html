@@ -48,6 +48,13 @@
       justify-content: center;
       font-size: 1.7rem;
       transition: var(--t-med);
+      overflow: hidden;
+    }
+
+    .svc-icon-wrap img {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
     }
 
     .svc-card:hover .svc-icon-wrap {
@@ -105,21 +112,24 @@
     }
 
     .price-name {
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.5);
-      margin-bottom: 0.5rem;
+      font-size: 1.1rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
     }
 
     .price-val {
       font-family: var(--font-display);
-      font-size: 1.6rem;
+      font-size: 2.8rem;
       color: var(--gold-light);
+      font-weight: 700;
     }
 
     .price-note {
-      font-size: 0.7rem;
-      color: rgba(255, 255, 255, 0.3);
-      margin-top: 0.2rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 0.4rem;
     }
 
     @media(max-width:768px) {
@@ -206,7 +216,7 @@
     <div class="container">
       <div class="services-grid">
         <div class="svc-card fade-up">
-          <div class="svc-icon-wrap">🦷</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/993/993345.png" alt="Dental X-ray"></div>
           <div class="svc-content">
             <h3>Dental X-rays & Diagnosis</h3>
             <p>State-of-the-art digital X-rays for precise, low-radiation diagnostics. Identify cavities, bone loss, and
@@ -219,7 +229,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-1">
-          <div class="svc-icon-wrap">✨</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/993/993338.png" alt="Aesthetic Dentistry"></div>
           <div class="svc-content">
             <h3>Aesthetic Dentistry</h3>
             <p>Transform your smile with carefully crafted cosmetic solutions — teeth whitening, bonding, and complete
@@ -232,7 +242,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-2">
-          <div class="svc-icon-wrap">💎</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/1707/1707424.png" alt="Laminates & Veneers"></div>
           <div class="svc-content">
             <h3>Laminates & Veneers</h3>
             <p>Ultra-thin porcelain shells crafted to perfection — fixing chips, stains, and gaps while preserving your
@@ -245,7 +255,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-3">
-          <div class="svc-icon-wrap">🔬</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/993/993342.png" alt="Root Canal Treatment"></div>
           <div class="svc-content">
             <h3>Root Canal Treatment (RCT)</h3>
             <p>Modern, painless root canal therapy to save your natural tooth. Single or multi-visit options with rotary
@@ -258,7 +268,7 @@
           </div>
         </div>
         <div class="svc-card fade-up">
-          <div class="svc-icon-wrap">🏗️</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/993/993322.png" alt="Dental Implants"></div>
           <div class="svc-content">
             <h3>Dental Implants</h3>
             <p>Permanent, natural-looking tooth replacements. Titanium implants fused with bone for lifelong stability
@@ -271,7 +281,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-1">
-          <div class="svc-icon-wrap">🪥</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/993/993321.png" alt="Scaling & Cleaning"></div>
           <div class="svc-content">
             <h3>Scaling & Cleaning</h3>
             <p>Professional deep cleaning to remove plaque, tartar, and stains — the foundation of a healthy mouth and
@@ -284,7 +294,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-2">
-          <div class="svc-icon-wrap">👑</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/1707/1707519.png" alt="Crowns & Bridges"></div>
           <div class="svc-content">
             <h3>Crowns & Bridges</h3>
             <p>Precision-crafted zirconia and PFM crowns to restore damaged teeth with natural aesthetics and
@@ -297,7 +307,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-3">
-          <div class="svc-icon-wrap">😁</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/1707/1707451.png" alt="Orthodontics & Aligners"></div>
           <div class="svc-content">
             <h3>Orthodontics & Aligners</h3>
             <p>Straighten your smile discreetly with clear aligners or traditional braces — customised treatment plans
@@ -310,7 +320,7 @@
           </div>
         </div>
         <div class="svc-card fade-up">
-          <div class="svc-icon-wrap">🦿</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/1707/1707533.png" alt="Dentures"></div>
           <div class="svc-content">
             <h3>Dentures</h3>
             <p>Custom-crafted dentures for complete or partial tooth replacement — restoring your smile, function, and
@@ -325,7 +335,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-1">
-          <div class="svc-icon-wrap">🪛</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/1707/1707449.png" alt="Dental Fillings"></div>
           <div class="svc-content">
             <h3>Dental Fillings</h3>
             <p>Restore decayed or damaged teeth with high-quality, durable filling materials that blend seamlessly with
@@ -338,7 +348,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-2">
-          <div class="svc-icon-wrap">🩺</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/1707/1707560.png" alt="Tooth Extraction"></div>
           <div class="svc-content">
             <h3>Tooth Extraction</h3>
             <p>Safe and painless tooth removal procedures — from simple extractions to complex surgical and impacted
@@ -351,7 +361,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-3">
-          <div class="svc-icon-wrap">🏥</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/1707/1707389.png" alt="Dental Surgery"></div>
           <div class="svc-content">
             <h3>Dental Surgery</h3>
             <p>Advanced oral surgical procedures performed with precision and care — including gum surgery, bone
@@ -364,7 +374,7 @@
           </div>
         </div>
         <div class="svc-card fade-up">
-          <div class="svc-icon-wrap">🧹</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/1707/1707546.png" alt="Dental Prophylaxis"></div>
           <div class="svc-content">
             <h3>Dental Prophylaxis & Polishing</h3>
             <p>Professional preventive care to keep your gums healthy and teeth stain-free — including air polishing for
@@ -377,7 +387,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-1">
-          <div class="svc-icon-wrap">🎨</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/993/993344.png" alt="Tooth Restoration"></div>
           <div class="svc-content">
             <h3>Discolored Tooth Restoration</h3>
             <p>Revive stained or discoloured teeth with expert restorative techniques — bringing back a natural,
@@ -390,7 +400,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-2">
-          <div class="svc-icon-wrap">💍</div>
+          <div class="svc-icon-wrap"><img src="https://cdn-icons-png.flaticon.com/128/993/993337.png" alt="Teeth Jewellery"></div>
           <div class="svc-content">
             <h3>Teeth Jewellery</h3>
             <p>Add a sparkle to your smile with safe, non-invasive dental gems and jewellery — a fun way to express
@@ -404,8 +414,8 @@
       </div>
 
       <!-- Consultation Pricing -->
-      <div class="pricing-bar fade-up" style="grid-template-columns:1fr;max-width:400px;margin:3rem auto 0;">
-        <div class="price-item">
+      <div class="pricing-bar fade-up" style="grid-template-columns:1fr;max-width:480px;margin:3rem auto 0;padding:3rem;">
+        <div class="price-item" style="padding:1.5rem;">
           <div class="price-name">Consultation</div>
           <div class="price-val">₹500</div>
           <div class="price-note">Per visit</div>
@@ -421,7 +431,7 @@
   <footer class="footer">
     <div class="container">
       <div class="footer-bottom" style="border-top:none;padding-top:0">
-        <span>© 2025 Smirk Dental Clinic & Implant Centre</span>
+        <span>© 2025 Smirk Dental Clinic & Implant Centre · Icons by <a href="https://www.flaticon.com" target="_blank" style="color:rgba(255,255,255,0.65);">Flaticon</a></span>
         <a href="../privacy-policy.html" style="font-size:0.82rem;color:rgba(255,255,255,0.65);text-decoration:underline;text-underline-offset:3px">Privacy Policy</a>
         <a href="https://www.google.com/maps/place/Smirk+Dental+Clinic+and+Implant+Centre+Vasant+Kunj/@28.5376204,77.1435609,17z/data=!3m1!4b1!4m6!3m5!1s0x390d1dc8b99bb661:0x737cb6a44d105000!8m2!3d28.5376204!4d77.1461412!16s%2Fg%2F11hdjb2c9k" target="_blank"
           class="footer-google-badge"><i class="fab fa-google"></i> Rate us on Google</a>
