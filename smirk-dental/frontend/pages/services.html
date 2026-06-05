@@ -38,28 +38,20 @@
     }
 
     .svc-icon-wrap {
-      width: 70px;
-      height: 70px;
+      width: 60px;
+      height: 60px;
       flex-shrink: 0;
-      border-radius: 50%;
+      border-radius: 16px;
       background: var(--teal-glow);
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 1.7rem;
       transition: var(--t-med);
-      overflow: hidden;
-      border: 3px solid rgba(42, 175, 169, 0.15);
-    }
-
-    .svc-icon-wrap img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
     }
 
     .svc-card:hover .svc-icon-wrap {
-      border-color: var(--teal);
-      transform: scale(1.05);
+      background: linear-gradient(135deg, var(--teal), var(--teal-deep));
     }
 
     .svc-content h3 {
@@ -217,7 +209,7 @@
     <div class="container">
       <div class="services-grid">
         <div class="svc-card fade-up">
-          <div class="svc-icon-wrap"><img src="../images/services/dental-xray.jpg" alt="Dental X-ray"></div>
+          <div class="svc-icon-wrap">🦷</div>
           <div class="svc-content">
             <h3>Dental X-rays & Diagnosis</h3>
             <p>State-of-the-art digital X-rays for precise, low-radiation diagnostics. Identify cavities, bone loss, and
@@ -230,7 +222,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-1">
-          <div class="svc-icon-wrap"><img src="../images/services/aesthetic-dentistry.jpg" alt="Aesthetic Dentistry"></div>
+          <div class="svc-icon-wrap">✨</div>
           <div class="svc-content">
             <h3>Aesthetic Dentistry</h3>
             <p>Transform your smile with carefully crafted cosmetic solutions — teeth whitening, bonding, and complete
@@ -243,7 +235,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-2">
-          <div class="svc-icon-wrap"><img src="../images/services/veneers.jpg" alt="Laminates & Veneers"></div>
+          <div class="svc-icon-wrap">💎</div>
           <div class="svc-content">
             <h3>Laminates & Veneers</h3>
             <p>Ultra-thin porcelain shells crafted to perfection — fixing chips, stains, and gaps while preserving your
@@ -256,7 +248,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-3">
-          <div class="svc-icon-wrap"><img src="../images/services/root-canal.jpg" alt="Root Canal Treatment"></div>
+          <div class="svc-icon-wrap">🔬</div>
           <div class="svc-content">
             <h3>Root Canal Treatment (RCT)</h3>
             <p>Modern, painless root canal therapy to save your natural tooth. Single or multi-visit options with rotary
@@ -269,7 +261,7 @@
           </div>
         </div>
         <div class="svc-card fade-up">
-          <div class="svc-icon-wrap"><img src="../images/services/dental-implant.jpg" alt="Dental Implants"></div>
+          <div class="svc-icon-wrap">🏗️</div>
           <div class="svc-content">
             <h3>Dental Implants</h3>
             <p>Permanent, natural-looking tooth replacements. Titanium implants fused with bone for lifelong stability
@@ -282,7 +274,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-1">
-          <div class="svc-icon-wrap"><img src="../images/services/scaling-cleaning.jpg" alt="Scaling & Cleaning"></div>
+          <div class="svc-icon-wrap">🪥</div>
           <div class="svc-content">
             <h3>Scaling & Cleaning</h3>
             <p>Professional deep cleaning to remove plaque, tartar, and stains — the foundation of a healthy mouth and
@@ -295,7 +287,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-2">
-          <div class="svc-icon-wrap"><img src="../images/services/crowns-bridges.jpg" alt="Crowns & Bridges"></div>
+          <div class="svc-icon-wrap">👑</div>
           <div class="svc-content">
             <h3>Crowns & Bridges</h3>
             <p>Precision-crafted zirconia and PFM crowns to restore damaged teeth with natural aesthetics and
@@ -308,7 +300,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-3">
-          <div class="svc-icon-wrap"><img src="../images/services/orthodontics.jpg" alt="Orthodontics & Aligners"></div>
+          <div class="svc-icon-wrap">😁</div>
           <div class="svc-content">
             <h3>Orthodontics & Aligners</h3>
             <p>Straighten your smile discreetly with clear aligners or traditional braces — customised treatment plans
@@ -321,7 +313,7 @@
           </div>
         </div>
         <div class="svc-card fade-up">
-          <div class="svc-icon-wrap"><img src="../images/services/dentures.jpg" alt="Dentures"></div>
+          <div class="svc-icon-wrap">🦿</div>
           <div class="svc-content">
             <h3>Dentures</h3>
             <p>Custom-crafted dentures for complete or partial tooth replacement — restoring your smile, function, and
@@ -336,7 +328,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-1">
-          <div class="svc-icon-wrap"><img src="../images/services/dental-fillings.jpg" alt="Dental Fillings"></div>
+          <div class="svc-icon-wrap">🪛</div>
           <div class="svc-content">
             <h3>Dental Fillings</h3>
             <p>Restore decayed or damaged teeth with high-quality, durable filling materials that blend seamlessly with
@@ -349,7 +341,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-2">
-          <div class="svc-icon-wrap"><img src="../images/services/tooth-extraction.jpg" alt="Tooth Extraction"></div>
+          <div class="svc-icon-wrap">🩺</div>
           <div class="svc-content">
             <h3>Tooth Extraction</h3>
             <p>Safe and painless tooth removal procedures — from simple extractions to complex surgical and impacted
@@ -362,7 +354,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-3">
-          <div class="svc-icon-wrap"><img src="../images/services/dental-surgery.jpg" alt="Dental Surgery"></div>
+          <div class="svc-icon-wrap">🏥</div>
           <div class="svc-content">
             <h3>Dental Surgery</h3>
             <p>Advanced oral surgical procedures performed with precision and care — including gum surgery, bone
@@ -375,7 +367,7 @@
           </div>
         </div>
         <div class="svc-card fade-up">
-          <div class="svc-icon-wrap"><img src="../images/services/prophylaxis.jpg" alt="Dental Prophylaxis"></div>
+          <div class="svc-icon-wrap">🧹</div>
           <div class="svc-content">
             <h3>Dental Prophylaxis & Polishing</h3>
             <p>Professional preventive care to keep your gums healthy and teeth stain-free — including air polishing for
@@ -388,7 +380,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-1">
-          <div class="svc-icon-wrap"><img src="../images/services/tooth-restoration.jpg" alt="Tooth Restoration"></div>
+          <div class="svc-icon-wrap">🎨</div>
           <div class="svc-content">
             <h3>Discolored Tooth Restoration</h3>
             <p>Revive stained or discoloured teeth with expert restorative techniques — bringing back a natural,
@@ -401,7 +393,7 @@
           </div>
         </div>
         <div class="svc-card fade-up fade-up-delay-2">
-          <div class="svc-icon-wrap"><img src="../images/services/teeth-jewellery.jpg" alt="Teeth Jewellery"></div>
+          <div class="svc-icon-wrap">💍</div>
           <div class="svc-content">
             <h3>Teeth Jewellery</h3>
             <p>Add a sparkle to your smile with safe, non-invasive dental gems and jewellery — a fun way to express
