@@ -4,6 +4,20 @@ const mongoose = require('mongoose');
 const { verifyMetaWebhookSignature } = require('../services/whatsapp/verifySignature');
 const { processWebhookBody } = require('../services/whatsapp/flowEngine');
 
+function summarizeWebhookBody(body) {
+  const entries = body?.entry || [];
+  let messageCount = 0;
+  let statusCount = 0;
+  for (const ent of entries) {
+    for (const change of ent.changes || []) {
+      const value = change.value || {};
+      messageCount += (value.messages || []).length;
+      statusCount += (value.statuses || []).length;
+    }
+  }
+  return { entries: entries.length, messageCount, statusCount, object: body?.object };
+}
+
 router.get('/', (req, res) => {
   const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
@@ -11,35 +25,61 @@ router.get('/', (req, res) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
+  console.log('📡 WhatsApp webhook GET', {
+    mode: mode || '(none)',
+    tokenMatch: token === VERIFY_TOKEN,
+    hasVerifyTokenEnv: !!VERIFY_TOKEN,
+  });
+
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
     console.log('✅ Webhook verified');
     return res.status(200).send(challenge);
   }
 
+  console.warn('❌ Webhook GET rejected (mode/token mismatch)');
   res.sendStatus(403);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', (req, res) => {
+  const summary = summarizeWebhookBody(req.body || {});
+  console.log('📥 WhatsApp webhook POST received', summary);
+
   try {
-    const appSecret = process.env.WHATSAPP_APP_SECRET;
+    const appSecret = (process.env.WHATSAPP_APP_SECRET || '').trim() || undefined;
     const signature = req.get('X-Hub-Signature-256');
     const rawBody = req.rawBody;
 
     if (!verifyMetaWebhookSignature(appSecret, rawBody, signature)) {
-      console.warn('❌ WhatsApp webhook signature verification failed');
+      console.warn('❌ WhatsApp webhook signature verification failed', {
+        appSecretConfigured: !!appSecret,
+        hasSignatureHeader: !!signature,
+        hasRawBody: !!rawBody,
+        hint: appSecret
+          ? 'Check WHATSAPP_APP_SECRET matches Meta App Secret exactly, or remove it for testing'
+          : 'Meta sent a signature but WHATSAPP_APP_SECRET is not set',
+      });
       return res.sendStatus(403);
     }
 
     if (mongoose.connection.readyState !== 1) {
-      console.error('Webhook received but MongoDB is not connected');
+      console.error('❌ Webhook received but MongoDB is not connected');
       return res.sendStatus(503);
     }
 
-    await processWebhookBody(req.body || {});
-    return res.sendStatus(200);
+    // Meta expects a fast 200 — process bot logic after responding
+    res.sendStatus(200);
+
+    const body = req.body || {};
+    setImmediate(() => {
+      processWebhookBody(body).catch((err) => {
+        console.error('❌ Webhook async processing error:', err.message || err);
+      });
+    });
   } catch (err) {
-    console.error('Webhook error:', err);
-    return res.sendStatus(500);
+    console.error('❌ Webhook handler error:', err.message || err);
+    if (!res.headersSent) {
+      res.sendStatus(500);
+    }
   }
 });
 

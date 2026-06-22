@@ -33,6 +33,17 @@ function mergeContext(session, flowResult) {
 async function processWebhookBody(body) {
   const items = collectInboundMessages(body);
 
+  if (!items.length) {
+    console.log('📭 WhatsApp webhook: no messages or statuses in payload');
+    return;
+  }
+
+  console.log('📬 WhatsApp webhook processing', {
+    items: items.length,
+    messages: items.filter((i) => i.type === 'message').length,
+    statuses: items.filter((i) => i.type === 'status').length,
+  });
+
   for (const item of items) {
     if (item.type === 'status') {
       logStatusSample(item.status);

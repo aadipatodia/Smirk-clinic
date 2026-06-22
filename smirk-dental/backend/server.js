@@ -171,13 +171,18 @@ app.use((err, req, res, next) => {
 connectDB().then(() => {
   startScheduler();
   app.listen(PORT, () => {
+    const waReady = !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
     console.log(`
 🦷 Smirk Dental Backend running
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚀 Server : http://localhost:${PORT}
 📋 Health : http://localhost:${PORT}/health
+📲 Webhook: http://localhost:${PORT}/webhook
 📅 Appts  : http://localhost:${PORT}/appointments
 🌍 Env    : ${process.env.NODE_ENV || 'development'}
+📱 WhatsApp outbound : ${waReady ? 'configured' : 'NOT configured (set WHATSAPP_TOKEN + WHATSAPP_PHONE_ID)'}
+🔐 Webhook verify     : ${process.env.VERIFY_TOKEN ? 'VERIFY_TOKEN set' : 'VERIFY_TOKEN missing'}
+🔏 App secret check   : ${process.env.WHATSAPP_APP_SECRET ? 'WHATSAPP_APP_SECRET set (signatures required)' : 'off (unsigned POSTs accepted — OK for testing)'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     `);
   });
