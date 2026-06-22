@@ -184,9 +184,7 @@ window.injectNav = function (activePage) {
   if (document.getElementById('loginModal')) {
     mobileExtras += `<a href="#" class="mobile-menu-extra mobile-menu-login" id="navMobileLogin">Login</a>`;
   }
-  if (!isInPages) {
-    mobileExtras += `<a href="${adminHref}" class="mobile-menu-extra mobile-menu-extra--muted">Admin Panel</a>`;
-  }
+  // Admin Panel link removed from public nav for security
 
   document.getElementById('navLinks').innerHTML = links;
   const menuEl = document.getElementById('mobileMenu');
@@ -267,43 +265,19 @@ async function loadUserAppointment() {
 window.cancelAppointment = async function (id) {
   if (!confirm("Cancel appointment?")) return;
 
-  await fetch(`https://smirk-clinic.onrender.com/appointments/${id}`, {
-    method: 'DELETE'
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  await fetch(`https://smirk-clinic.onrender.com/appointments/${id}/cancel`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: user._id || '' })
   });
 
-  // 🔥 CLEAR LOCAL DATA
   localStorage.removeItem('userAppointment');
   localStorage.removeItem('rescheduleId');
 
-  // 🔥 FORCE REFRESH
   location.reload();
 };
-
-function updateAuthButton() {
-  const btn = document.getElementById('loginBtn');
-  if (!btn) return;
-
-  const user = JSON.parse(localStorage.getItem('user'));
-
-  if (user && user.phone) {
-    // 🔥 LOGGED IN
-    btn.textContent = "Logout";
-
-    btn.onclick = () => {
-      localStorage.removeItem('user');
-      localStorage.removeItem('userAppointment');
-      location.reload();
-    };
-
-  } else {
-    // 🔥 NOT LOGGED IN
-    btn.textContent = "Login";
-
-    btn.onclick = () => {
-      openLoginModal(); // your existing function
-    };
-  }
-}
 
 function updateAuthButton() {
   const user = JSON.parse(localStorage.getItem('user'));

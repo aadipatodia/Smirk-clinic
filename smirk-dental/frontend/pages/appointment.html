@@ -678,10 +678,18 @@
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const urlParams = new URLSearchParams(window.location.search);
-    const isAdminBlock = urlParams.get('adminBlock');
+    const isAdminBlock = urlParams.get('adminBlock')
+      && (localStorage.getItem('adminAuth') === 'true' || sessionStorage.getItem('adminAuth') === 'true');
     const isReschedule = urlParams.get('reschedule');
     const rescheduleId = localStorage.getItem('rescheduleId');
     let currentUserSlot = null;
+
+    function getAdminPw() {
+      return localStorage.getItem('adminPassword') || sessionStorage.getItem('adminPassword') || '';
+    }
+    function adminHeaders() {
+      return { 'Content-Type': 'application/json', 'X-Admin-Password': getAdminPw() };
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
       if (user && user.name) {
@@ -770,7 +778,7 @@
 
       await fetch(`${API_BASE}/unavailable`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminHeaders(),
         body: JSON.stringify({
           date: selectedDate,
           time: null
@@ -793,7 +801,7 @@
       try {
         const res = await fetch(`${API_BASE}/unavailable`, {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
+          headers: adminHeaders(),
           body: JSON.stringify({ date: selectedDate, time: null })
         });
         const data = await res.json().catch(() => ({}));
@@ -813,7 +821,7 @@
       try {
         const res = await fetch(`${API_BASE}/unavailable`, {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
+          headers: adminHeaders(),
           body: JSON.stringify({ date: selectedDate, time })
         });
         const data = await res.json().catch(() => ({}));
@@ -1104,21 +1112,19 @@
           return;
         }
 
-        // FULL DAY
         if (selectedTimes.length === 0) {
           await fetch(`${API_BASE}/unavailable`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: adminHeaders(),
             body: JSON.stringify({ date: selectedDate, time: null })
           });
         }
 
-        // MULTIPLE SLOTS
         else {
           for (const time of selectedTimes) {
             await fetch(`${API_BASE}/unavailable`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: adminHeaders(),
               body: JSON.stringify({ date: selectedDate, time })
             });
           }

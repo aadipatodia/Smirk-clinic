@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 5001;
 
 const unavailableRouter = require('./routes/unavailable');
 
-console.log("ENV:", process.env.MONGODB_URI);
+console.log("ENV: MONGODB_URI", process.env.MONGODB_URI ? '[set]' : '[missing]');
 
 function captureRawBody(req, res, buf) {
   req.rawBody = buf;
@@ -66,10 +66,6 @@ app.use(cors({
 app.use(express.json({ limit: '256kb', verify: captureRawBody }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// WhatsApp Cloud API (needs parsed JSON + raw body for optional signature verify)
-app.use('/webhook', webhookRouter);
-app.use('/unavailable', unavailableRouter);
-
 // ── RATE LIMITING ──
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,  // 15 minutes
@@ -83,10 +79,19 @@ const bookingLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,  // 1 hour
   max: 5,                     // max 5 bookings per IP per hour
   message: { success: false, message: 'Booking limit reached. Please try again in an hour.' },
+  skip: (req) => req.method !== 'POST',
 });
 
-app.use('/api', apiLimiter);
-app.use('/api/appointments', bookingLimiter);  // applied only to POST via POST check below
+app.use('/appointments', apiLimiter);
+app.use('/appointments', bookingLimiter);
+app.use('/user', apiLimiter);
+app.use('/intake', apiLimiter);
+app.use('/unavailable', apiLimiter);
+app.use('/reviews', apiLimiter);
+
+// ── ROUTES ──
+app.use('/webhook', webhookRouter);
+app.use('/unavailable', unavailableRouter);
 
 // ── MONGODB CONNECTION ──
 const connectDB = async () => {
@@ -137,7 +142,6 @@ app.use('/user', userRouter);
 
 const intakeRouter = require('./routes/intake');
 app.use('/intake', intakeRouter);
-// ── ROUTES ──
 app.use('/appointments', appointmentsRouter);
 
 // Health check endpoint

@@ -691,6 +691,12 @@
   </style>
 </head>
 <script>
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
   async function loadReviews() {
     try {
       const res = await fetch('https://smirk-clinic.onrender.com/reviews');
@@ -708,13 +714,13 @@
 
       container.innerHTML = filtered.slice(0, 3).map(r => `
       <div class="review-card">
-        <div class="review-stars">${'★'.repeat(r.rating)}</div>
-        <p class="review-text">"${r.text}"</p>
+        <div class="review-stars">${'★'.repeat(Math.max(0, Math.min(5, parseInt(r.rating) || 0)))}</div>
+        <p class="review-text">"${escHtml(r.text)}"</p>
         <div class="review-author">
           <div class="review-av">👤</div>
           <div>
-            <div class="review-name">${r.author_name}</div>
-            <div class="review-date">${r.relative_time_description}</div>
+            <div class="review-name">${escHtml(r.author_name)}</div>
+            <div class="review-date">${escHtml(r.relative_time_description)}</div>
           </div>
         </div>
       </div>

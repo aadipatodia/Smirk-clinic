@@ -208,9 +208,11 @@
             if (pass === ADMIN_PASSWORD) {
 
                 if (remember) {
-                    localStorage.setItem('adminAuth', 'true'); // persistent
+                    localStorage.setItem('adminAuth', 'true');
+                    localStorage.setItem('adminPassword', pass);
                 } else {
-                    sessionStorage.setItem('adminAuth', 'true'); // only current tab
+                    sessionStorage.setItem('adminAuth', 'true');
+                    sessionStorage.setItem('adminPassword', pass);
                 }
 
                 showAdmin();
@@ -226,10 +228,15 @@
 
         function logout() {
             localStorage.removeItem('adminAuth');
+            localStorage.removeItem('adminPassword');
             sessionStorage.removeItem('adminAuth');
+            sessionStorage.removeItem('adminPassword');
 
-            // 🔴 REDIRECT TO HOME PAGE
             window.location.href = "../index.html";
+        }
+
+        function getAdminPassword() {
+            return localStorage.getItem('adminPassword') || sessionStorage.getItem('adminPassword') || '';
         }
 
         function showAdmin() {
@@ -241,10 +248,20 @@
         let ALL_APPOINTMENTS = [];
 
         async function loadAppointments() {
-            const res = await fetch(`${API}/appointments/all`);
+            const res = await fetch(`${API}/appointments/all`, {
+                headers: { 'X-Admin-Password': getAdminPassword() }
+            });
+            if (res.status === 401) {
+                localStorage.removeItem('adminAuth');
+                localStorage.removeItem('adminPassword');
+                sessionStorage.removeItem('adminAuth');
+                sessionStorage.removeItem('adminPassword');
+                location.reload();
+                return;
+            }
             const data = await res.json();
 
-            ALL_APPOINTMENTS = data.appointments;
+            ALL_APPOINTMENTS = data.appointments || [];
 
             updateStats(ALL_APPOINTMENTS);
             renderAppointments(ALL_APPOINTMENTS);
@@ -259,6 +276,12 @@
             document.getElementById('statToday').textContent = today.length;
             document.getElementById('statTotal').textContent = data.length;
             document.getElementById('statCancelled').textContent = cancelled.length;
+        }
+
+        function esc(str) {
+            const d = document.createElement('div');
+            d.textContent = str || '';
+            return d.innerHTML;
         }
 
         function renderAppointments(data) {
@@ -276,23 +299,18 @@
 
             container.innerHTML = data.map(a => `
         <div class="appt-row" style="border-radius:10px;margin-bottom:10px;background:white;box-shadow:0 4px 16px rgba(0,0,0,0.04);">
-            <div><strong>${a.name}</strong></div>
-            <div>${a.phone}</div>
-            <div>${a.date}</div>
-            <div>${a.time}</div>
+            <div><strong>${esc(a.name)}</strong></div>
+            <div>${esc(a.phone)}</div>
+            <div>${esc(a.date)}</div>
+            <div>${esc(a.time)}</div>
             <div>
                 <span class="status confirmed">
                     confirmed
                 </span>
             </div>
             <div style="display:flex;gap:6px;">
-                ${true
-                    ? `
-                      <button class="btn btn-sm btn-secondary" onclick="reschedule('${a._id}')">Reschedule</button>
-                      <button class="btn btn-sm btn-primary" onclick="cancel('${a._id}')">Cancel</button>
-                      `
-                    : ''
-                }
+                <button class="btn btn-sm btn-secondary" onclick="reschedule('${esc(a._id)}')">Reschedule</button>
+                <button class="btn btn-sm btn-primary" onclick="cancel('${esc(a._id)}')">Cancel</button>
             </div>
         </div>
         `).join('');
@@ -327,9 +345,15 @@
         }
 
         async function cancel(id) {
-            await fetch(`${API}/appointments/${id}`, { method: 'DELETE' });
+            await fetch(`${API}/appointments/${id}/cancel`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Admin-Password': getAdminPassword()
+                }
+            });
 
-            loadAppointments(); // already there ✔
+            loadAppointments();
 
             showToast("Cancelled successfully ❌");
         }
@@ -342,15 +366,12 @@
             window.location.href = "../pages/appointment.html?reschedule=true";
         }
 
-        // Auto login check
         if (
             localStorage.getItem('adminAuth') === 'true' ||
             sessionStorage.getItem('adminAuth') === 'true'
         ) {
             showAdmin();
         }
-
-        loadAppointments();
     </script>
 
 </body>

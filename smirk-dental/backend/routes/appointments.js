@@ -11,6 +11,7 @@ const router = express.Router();
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const { sendWhatsAppMessage } = require('../services/whatsapp');
+const { requireAdmin } = require('../middleware/adminAuth');
 const {
   VALID_SLOTS,
   isValidAppointmentDate,
@@ -177,7 +178,7 @@ See you soon 😊
   }
 );
 
-router.get('/all', async (req, res) => {
+router.get('/all', requireAdmin, async (req, res) => {
   try {
     const appointments = await Appointment.find().sort({ date: 1, time: 1 }).lean();
 
@@ -191,18 +192,65 @@ router.get('/all', async (req, res) => {
   }
 });
 
-router.put('/:id/cancel', async (req, res) => {
+router.get('/user/:userId', async (req, res) => {
   try {
-    const updated = await Appointment.findByIdAndUpdate(req.params.id, { status: 'cancelled' }, { new: true });
+    const { userId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: 'Invalid user ID.' });
+    }
+    const account = await User.findById(userId).lean();
+    if (!account) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+    const appointments = await Appointment.find({
+      userId: account._id,
+      status: 'confirmed',
+    }).sort({ date: 1, time: 1 }).lean();
 
-    res.json({
-      success: true,
-      appointment: updated,
-    });
+    res.json({ success: true, appointments });
   } catch (err) {
-    res.status(500).json({ success: false });
+    console.error('[GET /appointments/user]', err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
+async function handleCancel(req, res) {
+  try {
+    const adminPw = req.headers['x-admin-password'];
+    const { userId } = req.body || {};
+    const isAdmin = adminPw && adminPw === require('../middleware/adminAuth').ADMIN_PASSWORD;
+
+    if (!isAdmin) {
+      if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(401).json({ success: false, message: 'Please log in to cancel.' });
+      }
+      const account = await User.findById(userId).lean();
+      if (!account) {
+        return res.status(401).json({ success: false, message: 'Please log in again.' });
+      }
+      const appt = await Appointment.findById(req.params.id).lean();
+      if (!appt) {
+        return res.status(404).json({ success: false, message: 'Appointment not found.' });
+      }
+      if (phoneDigits(appt.phone) !== phoneDigits(account.phone)) {
+        return res.status(403).json({ success: false, message: 'You can only cancel your own appointment.' });
+      }
+    }
+
+    const updated = await Appointment.findByIdAndUpdate(req.params.id, { status: 'cancelled' }, { new: true });
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Appointment not found.' });
+    }
+
+    res.json({ success: true, appointment: updated });
+  } catch (err) {
+    console.error('[CANCEL]', err);
+    res.status(500).json({ success: false });
+  }
+}
+
+router.put('/:id/cancel', handleCancel);
+router.delete('/:id', handleCancel);
 
 router.put('/:id', async (req, res) => {
   try {
@@ -249,7 +297,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.post('/:id/review', async (req, res) => {
+router.post('/:id/review', requireAdmin, async (req, res) => {
   try {
     const appt = await Appointment.findById(req.params.id);
 
