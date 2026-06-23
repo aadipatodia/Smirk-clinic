@@ -20,6 +20,11 @@ const appointmentsRouter = require('./routes/appointments');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Render (and similar hosts) terminate TLS and set X-Forwarded-For; required for express-rate-limit.
+if (process.env.NODE_ENV === 'production' || process.env.TRUST_PROXY === '1') {
+  app.set('trust proxy', 1);
+}
+
 const unavailableRouter = require('./routes/unavailable');
 
 console.log("ENV: MONGODB_URI", process.env.MONGODB_URI ? '[set]' : '[missing]');
