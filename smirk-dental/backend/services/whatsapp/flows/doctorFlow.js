@@ -1,6 +1,11 @@
 const Appointment = require('../../../models/Appointment');
 const Unavailable = require('../../../models/Unavailable');
-const { VALID_SLOTS, getNextBookableDates, setAppointmentStatus } = require('../../appointmentService');
+const {
+  VALID_SLOTS,
+  getNextBookableDates,
+  setAppointmentStatus,
+  futureSlotsForDate,
+} = require('../../appointmentService');
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 const { todayYmdIst, addDaysYmdIst } = require('../dateIst');
 const { sendReviewPromptToPatient } = require('../reviewPrompt');
@@ -181,7 +186,12 @@ async function handleDoctorBlockFlow({ waId, event, ctx }) {
       await sendDoctorMainMenu(waId);
       return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'blk_bad' };
     }
-    const rows = VALID_SLOTS.slice(0, 10).map((t) => ({
+    const blockableSlots = futureSlotsForDate(date);
+    if (!blockableSlots.length) {
+      await sendText(waId, 'No slots left to block on that date. Pick another day.');
+      return sendBlockDateList(waId);
+    }
+    const rows = blockableSlots.slice(0, 10).map((t) => ({
       id: `DB_T:${encodeURIComponent(t)}`,
       title: t.slice(0, 24),
     }));
@@ -192,11 +202,18 @@ async function handleDoctorBlockFlow({ waId, event, ctx }) {
       rows,
       'Slot'
     );
-    await sendReplyButtons(waId, 'More slots on next page?', [
-      { id: 'DB_TPAGE:10', title: 'More slots' },
-      { id: 'DB_CAN', title: 'Cancel' },
-      { id: 'D_MENU', title: 'Main menu' },
-    ]);
+    if (blockableSlots.length > 10) {
+      await sendReplyButtons(waId, 'More slots on next page?', [
+        { id: 'DB_TPAGE:10', title: 'More slots' },
+        { id: 'DB_CAN', title: 'Cancel' },
+        { id: 'D_MENU', title: 'Main menu' },
+      ]);
+    } else {
+      await sendReplyButtons(waId, 'Done?', [
+        { id: 'DB_CAN', title: 'Cancel' },
+        { id: 'D_MENU', title: 'Main menu' },
+      ]);
+    }
     return {
       flow: 'doctor_block',
       step: 'pick_slot',
@@ -206,13 +223,14 @@ async function handleDoctorBlockFlow({ waId, event, ctx }) {
   }
 
   if (kind === 'button' && id.startsWith('DB_TPAGE:')) {
-    const start = parseInt(id.slice(10), 10);
+    const start = parseInt(id.slice('DB_TPAGE:'.length), 10);
     const date = ctx.blockDate;
     if (!date) {
       await sendDoctorMainMenu(waId);
       return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'blk_bad' };
     }
-    const chunk = VALID_SLOTS.slice(start, start + 10);
+    const blockableSlots = futureSlotsForDate(date);
+    const chunk = blockableSlots.slice(start, start + 10);
     if (!chunk.length) {
       await sendText(waId, 'No more slots in this page.');
       await sendDoctorMainMenu(waId);
@@ -224,12 +242,12 @@ async function handleDoctorBlockFlow({ waId, event, ctx }) {
     }));
     await sendListMessage(
       waId,
-      `Slots for ${date} (offset ${start})`,
+      `Slots for ${date} (page ${Math.floor(start / 10) + 1})`,
       'Pick slot',
       rows,
       'Slot'
     );
-    if (start + 10 < VALID_SLOTS.length) {
+    if (start + 10 < blockableSlots.length) {
       await sendReplyButtons(waId, 'Navigate', [
         { id: `DB_TPAGE:${start + 10}`, title: 'More slots' },
         { id: `DB_TPAGE:${Math.max(0, start - 10)}`, title: 'Prev slots' },

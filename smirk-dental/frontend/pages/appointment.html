@@ -854,29 +854,83 @@
       ubtn.title = full ? 'Remove full-day closure for this date' : 'No full-day block on this date';
     }
 
+    /** YYYY-MM-DD in Asia/Kolkata (matches backend date logic). */
+    function todayYmdIst() {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date());
+      const y = parts.find((p) => p.type === 'year')?.value;
+      const m = parts.find((p) => p.type === 'month')?.value;
+      const d = parts.find((p) => p.type === 'day')?.value;
+      return y && m && d ? `${y}-${m}-${d}` : null;
+    }
+
+    function addDaysYmd(ymd, daysToAdd) {
+      const [y, mo, d] = ymd.split('-').map(Number);
+      const next = new Date(Date.UTC(y, mo - 1, d + daysToAdd, 6, 30, 0));
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(next);
+      const yy = parts.find((p) => p.type === 'year')?.value;
+      const mm = parts.find((p) => p.type === 'month')?.value;
+      const dd = parts.find((p) => p.type === 'day')?.value;
+      return yy && mm && dd ? `${yy}-${mm}-${dd}` : null;
+    }
+
+    function weekdayFromYmd(ymd) {
+      const [y, mo, d] = ymd.split('-').map(Number);
+      return new Date(Date.UTC(y, mo - 1, d, 6, 30, 0)).getUTCDay();
+    }
+
+    function istNow() {
+      return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    }
+
+    /** Date appears in the picker (weekday, not past, still has a future slot today). */
+    function isDateBookable(ymd) {
+      if (weekdayFromYmd(ymd) === 0) return false;
+      const today = todayYmdIst();
+      if (!today || ymd < today) return false;
+      if (ymd === today) {
+        const now = istNow();
+        return ALL_SLOTS.some((t) => getISTDateTime(ymd, t) > now);
+      }
+      return true;
+    }
+
     // ── BUILD DATE PICKER ──
     function buildDatePicker() {
       const container = document.getElementById('datePicker');
       container.innerHTML = '';
       const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const today = new Date();
+      const today = todayYmdIst();
       let autoSelectedFirst = false;
+      let shown = 0;
+      let offset = 0;
 
-      for (let i = 0; i < 14; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        if (d.getDay() === 0) continue; // Skip Sundays
+      while (shown < 14 && offset < 30 && today) {
+        const dateStr = addDaysYmd(today, offset);
+        offset += 1;
+        if (!dateStr || !isDateBookable(dateStr)) continue;
+
+        const [y, mo, d] = dateStr.split('-').map(Number);
+        const displayDate = new Date(y, mo - 1, d);
 
         const btn = document.createElement('button');
         btn.className = 'date-btn';
         btn.type = 'button';
         btn.innerHTML = `
-          <span class="date-day">${days[d.getDay()]}</span>
-          <span class="date-num">${d.getDate()}</span>
-          <span class="date-month">${months[d.getMonth()]}</span>
+          <span class="date-day">${days[displayDate.getDay()]}</span>
+          <span class="date-num">${displayDate.getDate()}</span>
+          <span class="date-month">${months[displayDate.getMonth()]}</span>
         `;
-        const dateStr = formatLocalYMD(d);
         btn.dataset.date = dateStr;
 
         btn.addEventListener('click', () => {
@@ -887,7 +941,6 @@
           loadSlots(dateStr);
         });
 
-        // Auto-select first available
         // 🔥 RESCHEDULE: SELECT ACTUAL DATE
         if (isReschedule && currentUserSlot && dateStr === currentUserSlot.date) {
           btn.classList.add('selected');
@@ -895,7 +948,7 @@
           setTimeout(() => loadSlots(dateStr), 100);
         }
 
-        // NORMAL FLOW: select first visible weekday (not only loop index 0 — week may start Sunday)
+        // NORMAL FLOW: select first visible bookable day
         else if (!selectedDate && !autoSelectedFirst) {
           autoSelectedFirst = true;
           btn.classList.add('selected');
@@ -903,6 +956,7 @@
           setTimeout(() => loadSlots(dateStr), 100);
         }
         container.appendChild(btn);
+        shown += 1;
       }
     }
 

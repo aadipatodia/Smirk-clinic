@@ -16,8 +16,8 @@ function apptBelongsToWa(appt, waId) {
 const VALID_SLOTS = [
   '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
   '12:00 PM', '12:30 PM', '01:00 PM',
-  '01:45 PM', '03:15 PM', '03:45 PM',
-  '04:15 PM', '04:45 PM', '05:15 PM', '05:45 PM', '06:15 PM', '06:30 PM',
+  '01:30 PM', '03:00 PM', '03:30 PM',
+  '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM',
 ];
 
 /** Weekday (0=Sun) for this calendar date in IST, using a noon anchor instant. */
@@ -63,13 +63,31 @@ async function getBookedAndBlockedForDate(date) {
   return { bookedSlots, blockedSlots, fullDayBlock };
 }
 
+/** Slots on `date` that have not started yet (IST). For future dates, all VALID_SLOTS. */
+function futureSlotsForDate(date) {
+  const today = todayYmdIst();
+  if (date !== today) return [...VALID_SLOTS];
+  const now = Date.now();
+  return VALID_SLOTS.filter((t) => {
+    const ms = appointmentUtcMs(date, t);
+    return ms != null && ms > now;
+  });
+}
+
+/** Calendar date is open for booking/blocking (weekday, not past, still has a future slot today). */
+function isDateStillBookable(dateStr) {
+  if (!isValidAppointmentDate(dateStr)) return false;
+  return futureSlotsForDate(dateStr).length > 0;
+}
+
 async function getAvailableSlots(date) {
   if (!isValidAppointmentDate(date)) return [];
   const { bookedSlots, blockedSlots, fullDayBlock } = await getBookedAndBlockedForDate(date);
   if (fullDayBlock) return [];
   const blockedSet = new Set(blockedSlots);
   const bookedSet = new Set(bookedSlots);
-  return VALID_SLOTS.filter((t) => !blockedSet.has(t) && !bookedSet.has(t));
+  const openSlots = futureSlotsForDate(date);
+  return openSlots.filter((t) => !blockedSet.has(t) && !bookedSet.has(t));
 }
 
 /** Free slots for a date when moving `excludeAppointmentId` off that slot (still confirmed until saved). */
@@ -97,7 +115,8 @@ async function getAvailableSlotsForReschedule(date, excludeAppointmentId) {
   if (fullDayBlock) return [];
   const blockedSet = new Set(blockedSlots);
   const bookedSet = new Set(bookedSlots);
-  return VALID_SLOTS.filter((t) => !blockedSet.has(t) && !bookedSet.has(t));
+  const openSlots = futureSlotsForDate(date);
+  return openSlots.filter((t) => !blockedSet.has(t) && !bookedSet.has(t));
 }
 
 async function listUpcomingAppointmentsForWa(waId) {
@@ -129,6 +148,9 @@ async function rescheduleAppointmentForWa(appointmentId, waId, date, time) {
   }
   if (!isValidAppointmentDate(date)) {
     throw Object.assign(new Error('Invalid date'), { code: 'VALIDATION' });
+  }
+  if (!futureSlotsForDate(date).includes(time)) {
+    throw Object.assign(new Error('Time slot is no longer available'), { code: 'VALIDATION' });
   }
   const appt = await Appointment.findById(appointmentId);
   if (!appt || !apptBelongsToWa(appt, waId)) {
@@ -189,7 +211,7 @@ function getNextBookableDates(maxDays = 14) {
   let guard = 0;
   while (added < maxDays && guard < 40) {
     guard += 1;
-    if (isValidAppointmentDate(ymd)) {
+    if (isDateStillBookable(ymd)) {
       out.push(ymd);
       added += 1;
     }
@@ -228,6 +250,9 @@ async function createAppointment({ name, phone, date, time, notes, userId }) {
   }
   if (!VALID_SLOTS.includes(time)) {
     throw Object.assign(new Error('Invalid time slot'), { code: 'VALIDATION' });
+  }
+  if (!futureSlotsForDate(date).includes(time)) {
+    throw Object.assign(new Error('Time slot is no longer available'), { code: 'VALIDATION' });
   }
 
   const existing = await Appointment.findOne({ date, time, status: 'confirmed' });
@@ -275,6 +300,8 @@ async function recordReviewRating(appointmentId, rating) {
 module.exports = {
   VALID_SLOTS,
   isValidAppointmentDate,
+  isDateStillBookable,
+  futureSlotsForDate,
   formatPhoneForAppointment,
   phoneDigits,
   apptBelongsToWa,
