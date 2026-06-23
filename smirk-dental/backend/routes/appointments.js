@@ -11,6 +11,10 @@ const router = express.Router();
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const { sendWhatsAppMessage } = require('../services/whatsapp');
+const {
+  notifyDoctorAppointmentCancelled,
+  notifyDoctorAppointmentRescheduled,
+} = require('../services/doctorNotifications');
 const { requireAdmin } = require('../middleware/adminAuth');
 const {
   VALID_SLOTS,
@@ -242,6 +246,10 @@ async function handleCancel(req, res) {
       return res.status(404).json({ success: false, message: 'Appointment not found.' });
     }
 
+    if (!isAdmin) {
+      await notifyDoctorAppointmentCancelled(updated);
+    }
+
     res.json({ success: true, appointment: updated });
   } catch (err) {
     console.error('[CANCEL]', err);
@@ -287,6 +295,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const updated = await Appointment.findByIdAndUpdate(req.params.id, { date, time }, { new: true });
+    await notifyDoctorAppointmentRescheduled(updated, appt.date, appt.time);
 
     res.json({
       success: true,

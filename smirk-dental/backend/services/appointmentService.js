@@ -2,6 +2,11 @@ const Appointment = require('../models/Appointment');
 const Unavailable = require('../models/Unavailable');
 const User = require('../models/User');
 const { todayYmdIst, addDaysYmdIst } = require('./whatsapp/dateIst');
+const {
+  notifyDoctorAppointmentConfirmed,
+  notifyDoctorAppointmentCancelled,
+  notifyDoctorAppointmentRescheduled,
+} = require('./doctorNotifications');
 
 function phoneDigits(phone) {
   return String(phone || '').replace(/\D/g, '');
@@ -139,6 +144,7 @@ async function cancelAppointmentForWa(appointmentId, waId) {
   if (appt.status !== 'confirmed') return { ok: false, reason: 'not_confirmed' };
   appt.status = 'cancelled';
   await appt.save();
+  await notifyDoctorAppointmentCancelled(appt);
   return { ok: true, appt };
 }
 
@@ -168,10 +174,13 @@ async function rescheduleAppointmentForWa(appointmentId, waId, date, time) {
   if (existing) {
     throw Object.assign(new Error('SLOT_TAKEN'), { code: 'CONFLICT' });
   }
+  const oldDate = appt.date;
+  const oldTime = appt.time;
   try {
     appt.date = date;
     appt.time = time;
     await appt.save();
+    await notifyDoctorAppointmentRescheduled(appt, oldDate, oldTime);
     return appt;
   } catch (err) {
     if (err.code === 11000) {
@@ -261,7 +270,7 @@ async function createAppointment({ name, phone, date, time, notes, userId }) {
   }
 
   try {
-    return await Appointment.create({
+    const appt = await Appointment.create({
       name: name.trim().slice(0, 100),
       phone: phoneStr,
       date,
@@ -269,6 +278,8 @@ async function createAppointment({ name, phone, date, time, notes, userId }) {
       notes: notes ? String(notes).slice(0, 500) : undefined,
       userId,
     });
+    await notifyDoctorAppointmentConfirmed(appt);
+    return appt;
   } catch (err) {
     if (err.code === 11000) {
       throw Object.assign(new Error('SLOT_TAKEN'), { code: 'CONFLICT' });
