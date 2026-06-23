@@ -6,19 +6,10 @@ const {
   normalizeInboundMessage,
   collectInboundMessages,
   describeInboundEvent,
-  describeBotNumber,
 } = require('./inboundNormalize');
+const { logUserMessage, rememberBotNumber } = require('./waLog');
 const { handlePatientAction } = require('./flows/patientFlow');
 const { handleDoctorAction } = require('./flows/doctorFlow');
-
-function logStatusSample(status) {
-  const id = status?.id;
-  const st = status?.status;
-  const recipient = status?.recipient_id;
-  if (id || st) {
-    console.log('📬 WhatsApp status:', { id, st, recipient: recipient ? '…' : undefined });
-  }
-}
 
 function mergeContext(session, flowResult) {
   const prev =
@@ -38,22 +29,10 @@ function mergeContext(session, flowResult) {
 async function processWebhookBody(body) {
   const items = collectInboundMessages(body);
 
-  if (!items.length) {
-    console.log('📭 WhatsApp webhook: no messages or statuses in payload');
-    return;
-  }
-
-  console.log('📬 WhatsApp webhook processing', {
-    items: items.length,
-    messages: items.filter((i) => i.type === 'message').length,
-    statuses: items.filter((i) => i.type === 'status').length,
-  });
+  if (!items.length) return;
 
   for (const item of items) {
-    if (item.type === 'status') {
-      logStatusSample(item.status);
-      continue;
-    }
+    if (item.type === 'status') continue;
 
     if (item.type !== 'message') continue;
 
@@ -70,27 +49,15 @@ async function processWebhookBody(body) {
         await WaProcessedMessage.create({ messageId, waId });
         recorded = true;
       } catch (e) {
-        if (e.code === 11000) {
-          console.log('↩︎ Duplicate WhatsApp message id, skip:', messageId);
-          continue;
-        }
+        if (e.code === 11000) continue;
         throw e;
       }
 
       const role = await resolveRole(waId);
       const session = await getSession(waId);
       const event = normalizeInboundMessage(message);
-      const bot = describeBotNumber(item.metadata);
-      console.log('📩 Incoming WA', {
-        userPhone: waId,
-        userMessage: describeInboundEvent(event),
-        botNumber: bot.label,
-        botDisplayNumber: bot.display,
-        botPhoneId: bot.phoneId,
-        role,
-        eventKind: event.kind,
-        messageId,
-      });
+      rememberBotNumber(item.metadata);
+      logUserMessage(waId, describeInboundEvent(event), role);
 
       const flowResult =
         role === 'doctor'

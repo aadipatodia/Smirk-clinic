@@ -4,50 +4,6 @@ const mongoose = require('mongoose');
 const { verifyMetaWebhookSignature } = require('../services/whatsapp/verifySignature');
 const { processWebhookBody } = require('../services/whatsapp/flowEngine');
 
-const { describeBotNumber } = require('../services/whatsapp/inboundNormalize');
-
-function summarizeWebhookBody(body) {
-  const entries = body?.entry || [];
-  let messageCount = 0;
-  let statusCount = 0;
-  let firstUserMessage = null;
-  let botNumber = null;
-
-  for (const ent of entries) {
-    for (const change of ent.changes || []) {
-      const value = change.value || {};
-      messageCount += (value.messages || []).length;
-      statusCount += (value.statuses || []).length;
-      if (!botNumber && value.metadata) {
-        botNumber = describeBotNumber(value.metadata).label;
-      }
-      if (!firstUserMessage && value.messages?.length) {
-        const msg = value.messages[0];
-        if (msg.type === 'text' && msg.text?.body != null) {
-          firstUserMessage = String(msg.text.body).trim();
-        } else if (msg.type === 'interactive' && msg.interactive?.button_reply) {
-          const b = msg.interactive.button_reply;
-          firstUserMessage = b.title ? `[button] ${b.title}` : `[button] ${b.id}`;
-        } else if (msg.type === 'interactive' && msg.interactive?.list_reply) {
-          const r = msg.interactive.list_reply;
-          firstUserMessage = r.title ? `[list] ${r.title}` : `[list] ${r.id}`;
-        } else if (msg.type) {
-          firstUserMessage = `[${msg.type}]`;
-        }
-      }
-    }
-  }
-
-  return {
-    entries: entries.length,
-    messageCount,
-    statusCount,
-    object: body?.object,
-    botNumber,
-    userMessage: firstUserMessage,
-  };
-}
-
 router.get('/', (req, res) => {
   const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
@@ -71,9 +27,6 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const summary = summarizeWebhookBody(req.body || {});
-  console.log('📥 WhatsApp webhook POST received', summary);
-
   try {
     const appSecret = (process.env.WHATSAPP_APP_SECRET || '').trim() || undefined;
     const signature = req.get('X-Hub-Signature-256');

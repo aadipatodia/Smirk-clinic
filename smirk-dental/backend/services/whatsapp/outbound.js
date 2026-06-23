@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { logBotReply } = require('./waLog');
 
 function apiBase() {
   const base = `${process.env.WHATSAPP_API_URL}/${process.env.WHATSAPP_PHONE_ID}/messages`;
@@ -24,16 +25,6 @@ function botSendContext() {
   };
 }
 
-function logOutbound(kind, to, extra = {}) {
-  const bot = botSendContext();
-  console.log(`📤 Outbound WA [${kind}]`, {
-    botNumber: bot.botNumber,
-    botPhoneId: bot.botPhoneId,
-    toUser: normalizeTo(to),
-    ...extra,
-  });
-}
-
 async function postMessagePayload(payload) {
   const url = apiBase();
   await axios.post(url, payload, { headers: authHeaders() });
@@ -54,9 +45,7 @@ async function sendText(to, body) {
       type: 'text',
       text: { body: String(body).slice(0, 4096) },
     });
-    logOutbound('text', to, {
-      preview: String(body).slice(0, 120).replace(/\s+/g, ' ').trim(),
-    });
+    logBotReply(body);
   } catch (err) {
     console.error('❌ WhatsApp sendText error:', {
       ...botSendContext(),
@@ -96,10 +85,8 @@ async function sendReplyButtons(to, bodyText, buttons) {
         action: { buttons: safeButtons },
       },
     });
-    logOutbound('buttons', to, {
-      buttons: safeButtons.map((b) => b.reply.title),
-      preview: String(bodyText).slice(0, 80).replace(/\s+/g, ' ').trim(),
-    });
+    const buttonLabels = safeButtons.map((b) => b.reply.title).join(' | ');
+    logBotReply(buttonLabels ? `${bodyText} [${buttonLabels}]` : bodyText);
   } catch (err) {
     console.error('❌ WhatsApp sendReplyButtons error:', {
       ...botSendContext(),
@@ -145,11 +132,7 @@ async function sendListMessage(to, bodyText, buttonLabel, rows, headerText) {
       type: 'interactive',
       interactive,
     });
-    logOutbound('list', to, {
-      listButton: String(buttonLabel || 'Open').slice(0, 20),
-      rowCount: safeRows.length,
-      preview: String(bodyText).slice(0, 80).replace(/\s+/g, ' ').trim(),
-    });
+    logBotReply(bodyText);
   } catch (err) {
     console.error('❌ WhatsApp sendListMessage error:', {
       ...botSendContext(),
@@ -187,7 +170,7 @@ async function sendTemplate(to, templateName, languageCode, bodyParams = []) {
         ...(components.length ? { components } : {}),
       },
     });
-    logOutbound('template', to, { templateName });
+    logBotReply(`[template: ${templateName}]`);
   } catch (err) {
     console.error('❌ WhatsApp sendTemplate error:', {
       ...botSendContext(),
