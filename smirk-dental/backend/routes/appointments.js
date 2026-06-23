@@ -15,6 +15,10 @@ const {
   notifyDoctorAppointmentCancelled,
   notifyDoctorAppointmentRescheduled,
 } = require('../services/doctorNotifications');
+const {
+  notifyPatientAppointmentCancelled,
+  notifyPatientAppointmentRescheduled,
+} = require('../services/patientNotifications');
 const { requireAdmin } = require('../middleware/adminAuth');
 const {
   VALID_SLOTS,
@@ -248,6 +252,8 @@ async function handleCancel(req, res) {
 
     if (!isAdmin) {
       await notifyDoctorAppointmentCancelled(updated);
+    } else {
+      await notifyPatientAppointmentCancelled(updated);
     }
 
     res.json({ success: true, appointment: updated });
@@ -292,7 +298,7 @@ router.put('/:id/admin-reschedule', requireAdmin, async (req, res) => {
     appt.date = date;
     appt.time = time;
     await appt.save();
-    await notifyDoctorAppointmentRescheduled(appt, oldDate, oldTime);
+    await notifyPatientAppointmentRescheduled(appt, oldDate, oldTime);
 
     res.json({ success: true, appointment: appt });
   } catch (err) {

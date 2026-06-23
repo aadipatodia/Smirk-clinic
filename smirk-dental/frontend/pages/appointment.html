@@ -577,7 +577,7 @@
         </div>
 
         <!-- Patient details -->
-        <div class="form-section">
+        <div class="form-section" id="patientDetailsSection">
           <div class="form-section-title"><i class="fas fa-user" style="color:var(--teal)"></i> Your Details</div>
           <div class="form-row">
             <div class="form-group">
@@ -599,7 +599,7 @@
           style="width:100%;justify-content:center;margin-top:1.5rem" onclick="submitBooking()">
           <i class="fas fa-calendar-check"></i> Confirm Appointment
         </button>
-        <div style="text-align:center;font-size:0.75rem;color:var(--grey);margin-top:0.8rem">
+        <div id="privacyNote" style="text-align:center;font-size:0.75rem;color:var(--grey);margin-top:0.8rem">
           <i class="fas fa-lock" style="color:var(--teal)"></i> Your details are secure and private
         </div>
       </div>
@@ -656,10 +656,11 @@
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const urlParams = new URLSearchParams(window.location.search);
-    const isAdminBlock = urlParams.get('adminBlock')
-      && (localStorage.getItem('adminAuth') === 'true' || sessionStorage.getItem('adminAuth') === 'true');
+    const isAdminAuth = localStorage.getItem('adminAuth') === 'true' || sessionStorage.getItem('adminAuth') === 'true';
+    const isAdminBlock = urlParams.get('adminBlock') && isAdminAuth;
     const isReschedule = urlParams.get('reschedule');
     const rescheduleId = localStorage.getItem('rescheduleId');
+    const isAdminReschedule = !!(isReschedule && rescheduleId && isAdminAuth);
     let currentUserSlot = null;
 
     function getAdminPw() {
@@ -1180,14 +1181,57 @@
         return;
       }
 
-      if (!isRescheduleFlow) {
+      if (isAdminReschedule) {
         if (!selectedDate) { showErr('Please select a date.'); return; }
         if (!selectedTime) { showErr('Please select a time slot.'); return; }
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rescheduling...';
+
+        try {
+          const res = await fetch(`${API_BASE}/appointments/${rescheduleId}/admin-reschedule`, {
+            method: 'PUT',
+            headers: adminHeaders(),
+            body: JSON.stringify({ date: selectedDate, time: selectedTime }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Reschedule failed');
+
+          localStorage.removeItem('rescheduleId');
+
+          document.getElementById('bookingForm').classList.add('hiding');
+          setTimeout(() => {
+            document.getElementById('bookingForm').style.display = 'none';
+            const s = document.getElementById('successState');
+            s.classList.add('show');
+            s.querySelector('h3').textContent = 'Appointment Rescheduled';
+            s.querySelector('p').textContent = 'The patient will be notified on WhatsApp.';
+            document.getElementById('confirmDetails').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          <div><strong>📅 Date:</strong> ${selectedDate}</div>
+          <div><strong>🕐 Time:</strong> ${selectedTime}</div>
+        </div>`;
+            const homeBtn = s.querySelector('a.btn');
+            if (homeBtn) {
+              homeBtn.textContent = 'Back to Admin Panel';
+              homeBtn.href = 'admin.html';
+            }
+          }, 300);
+        } catch (err) {
+          showErr(err.message || 'Could not reschedule.');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Reschedule';
+        }
+        return;
       }
+
+      if (!selectedDate) { showErr('Please select a date.'); return; }
+      if (!selectedTime) { showErr('Please select a time slot.'); return; }
 
       const sessionUser = JSON.parse(localStorage.getItem('user') || '{}');
       const loggedIn = !!(sessionUser && sessionUser._id && sessionUser.phone);
-      if (!isAdminBlock && !loggedIn) {
+      if (!isAdminBlock && !isAdminReschedule && !loggedIn) {
         sessionStorage.setItem('pendingBooking', JSON.stringify({
           selectedDate,
           selectedTime,
@@ -1215,22 +1259,7 @@
       try {
         let res;
 
-        const isAdminReschedule = isRescheduleFlow
-          && (localStorage.getItem('adminAuth') === 'true' || sessionStorage.getItem('adminAuth') === 'true');
-
-        if (isRescheduleFlow && isAdminReschedule) {
-          res = await fetch(`${API_BASE}/appointments/${rescheduleId}/admin-reschedule`, {
-            method: 'PUT',
-            headers: adminHeaders(),
-            body: JSON.stringify({
-              date: selectedDate,
-              time: selectedTime,
-            }),
-          });
-
-          localStorage.removeItem('rescheduleId');
-
-        } else if (isRescheduleFlow) {
+        if (isRescheduleFlow) {
           res = await fetch(`${API_BASE}/appointments/${rescheduleId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -1367,7 +1396,7 @@
     }
 
     function openLoginModalIfBookQuery() {
-      if (isAdminBlock) return;
+      if (isAdminBlock || isAdminReschedule) return;
       const params = new URLSearchParams(window.location.search);
       if (params.get('login') !== '1') return;
       const u = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1421,6 +1450,33 @@
       // 🟢 Subtitle
       document.querySelector('.booking-sub').innerText =
         'Block slots with the orange button, or tap a blocked time to unblock. Use Unblock full day when the whole day was closed.';
+    }
+
+    if (isAdminReschedule) {
+      const appt = JSON.parse(localStorage.getItem('userAppointment') || '{}');
+      const adminBack = document.getElementById('adminBackBtn');
+      if (adminBack) adminBack.style.display = 'inline-block';
+
+      document.getElementById('bookingTitle').innerText = 'Reschedule Appointment';
+      document.querySelector('.booking-sub').innerText = appt.name
+        ? `Rescheduling for ${appt.name} — pick a new date and time.`
+        : 'Pick a new date and time for this appointment.';
+      document.getElementById('submitBtn').innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Reschedule';
+
+      const patientSection = document.getElementById('patientDetailsSection');
+      if (patientSection) patientSection.style.display = 'none';
+
+      const privacyNote = document.getElementById('privacyNote');
+      if (privacyNote) privacyNote.style.display = 'none';
+
+      const step3 = document.getElementById('step3');
+      if (step3) step3.style.display = 'none';
+
+      const stepLines = document.querySelectorAll('.step-line');
+      if (stepLines[1]) stepLines[1].style.display = 'none';
+
+      const adminActions = document.getElementById('adminDayActions');
+      if (adminActions) adminActions.style.display = 'none';
     }
 
     // 🔥 HIDE BLOCK / UNBLOCK FOR NON-ADMIN
