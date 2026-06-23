@@ -163,6 +163,13 @@
       overflow: hidden;
     }
 
+    .doctor-avatar-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+
     .doctor-name-card {
       font-family: var(--font-display);
       font-size: 1.4rem;
@@ -794,29 +801,7 @@
             style="width:170px;height:170px;border-radius:50%;background:linear-gradient(145deg,rgba(42,175,169,0.12),rgba(201,148,58,0.08));position:absolute;top:1.5rem;left:50%;transform:translateX(-50%);">
           </div>
           <div class="doctor-avatar-wrap">
-            <!-- Inline SVG doctor illustration -->
-            <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" width="160" height="160">
-              <defs>
-                <linearGradient id="bg-g" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#7DCFCC" />
-                  <stop offset="100%" stop-color="#2AAFA9" />
-                </linearGradient>
-              </defs>
-              <circle cx="80" cy="80" r="80" fill="url(#bg-g)" />
-              <ellipse cx="80" cy="130" rx="42" ry="30" fill="#1E8A85" />
-              <ellipse cx="80" cy="135" rx="42" ry="28" fill="white" />
-              <rect x="72" y="110" width="16" height="36" fill="white" />
-              <circle cx="80" cy="68" r="34" fill="#FDDCB5" />
-              <ellipse cx="80" cy="44" rx="34" ry="22" fill="#3D2314" />
-              <ellipse cx="80" cy="52" rx="34" ry="18" fill="#3D2314" />
-              <ellipse cx="68" cy="68" rx="5" ry="6" fill="white" />
-              <ellipse cx="92" cy="68" rx="5" ry="6" fill="white" />
-              <circle cx="68" cy="69" r="3" fill="#1A2A3A" />
-              <circle cx="92" cy="69" r="3" fill="#1A2A3A" />
-              <path d="M73 80 Q80 86 87 80" stroke="#B06B5A" stroke-width="2" fill="none" stroke-linecap="round" />
-              <path d="M60 120 Q52 132 60 142" stroke="#2AAFA9" stroke-width="3.5" fill="none" />
-              <circle cx="60" cy="143" r="5" fill="#2AAFA9" />
-            </svg>
+            <img src="images/WhatsApp Image 2026-06-22 at 16.10.11.jpeg" alt="Dr. Mehak Gupta" />
           </div>
           <div class="doctor-name-card">Dr. Mehak Gupta</div>
           <div class="doctor-qual-card">BDS · Dental Surgeon</div>
