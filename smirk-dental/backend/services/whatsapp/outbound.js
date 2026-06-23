@@ -16,6 +16,24 @@ function normalizeTo(to) {
   return String(to).replace(/\D/g, '');
 }
 
+function botSendContext() {
+  const phoneId = process.env.WHATSAPP_PHONE_ID || null;
+  return {
+    botPhoneId: phoneId,
+    botNumber: phoneId ? `phone_id ${phoneId}` : '(not configured)',
+  };
+}
+
+function logOutbound(kind, to, extra = {}) {
+  const bot = botSendContext();
+  console.log(`📤 Outbound WA [${kind}]`, {
+    botNumber: bot.botNumber,
+    botPhoneId: bot.botPhoneId,
+    toUser: normalizeTo(to),
+    ...extra,
+  });
+}
+
 async function postMessagePayload(payload) {
   const url = apiBase();
   await axios.post(url, payload, { headers: authHeaders() });
@@ -36,9 +54,15 @@ async function sendText(to, body) {
       type: 'text',
       text: { body: String(body).slice(0, 4096) },
     });
-    console.log('✅ WhatsApp text sent to', normalizeTo(to));
+    logOutbound('text', to, {
+      preview: String(body).slice(0, 120).replace(/\s+/g, ' ').trim(),
+    });
   } catch (err) {
-    console.error('❌ WhatsApp sendText error:', err.response?.data || err.message);
+    console.error('❌ WhatsApp sendText error:', {
+      ...botSendContext(),
+      toUser: normalizeTo(to),
+      error: err.response?.data || err.message,
+    });
   }
 }
 
@@ -72,9 +96,16 @@ async function sendReplyButtons(to, bodyText, buttons) {
         action: { buttons: safeButtons },
       },
     });
-    console.log('✅ WhatsApp buttons sent to', normalizeTo(to));
+    logOutbound('buttons', to, {
+      buttons: safeButtons.map((b) => b.reply.title),
+      preview: String(bodyText).slice(0, 80).replace(/\s+/g, ' ').trim(),
+    });
   } catch (err) {
-    console.error('❌ WhatsApp sendReplyButtons error:', err.response?.data || err.message);
+    console.error('❌ WhatsApp sendReplyButtons error:', {
+      ...botSendContext(),
+      toUser: normalizeTo(to),
+      error: err.response?.data || err.message,
+    });
   }
 }
 
@@ -114,9 +145,17 @@ async function sendListMessage(to, bodyText, buttonLabel, rows, headerText) {
       type: 'interactive',
       interactive,
     });
-    console.log('✅ WhatsApp list sent to', normalizeTo(to));
+    logOutbound('list', to, {
+      listButton: String(buttonLabel || 'Open').slice(0, 20),
+      rowCount: safeRows.length,
+      preview: String(bodyText).slice(0, 80).replace(/\s+/g, ' ').trim(),
+    });
   } catch (err) {
-    console.error('❌ WhatsApp sendListMessage error:', err.response?.data || err.message);
+    console.error('❌ WhatsApp sendListMessage error:', {
+      ...botSendContext(),
+      toUser: normalizeTo(to),
+      error: err.response?.data || err.message,
+    });
   }
 }
 
@@ -148,9 +187,14 @@ async function sendTemplate(to, templateName, languageCode, bodyParams = []) {
         ...(components.length ? { components } : {}),
       },
     });
-    console.log('✅ WhatsApp template sent to', normalizeTo(to), templateName);
+    logOutbound('template', to, { templateName });
   } catch (err) {
-    console.error('❌ WhatsApp sendTemplate error:', err.response?.data || err.message);
+    console.error('❌ WhatsApp sendTemplate error:', {
+      ...botSendContext(),
+      toUser: normalizeTo(to),
+      templateName,
+      error: err.response?.data || err.message,
+    });
   }
 }
 

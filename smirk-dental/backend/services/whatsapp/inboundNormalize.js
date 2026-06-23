@@ -53,4 +53,42 @@ function collectInboundMessages(body) {
   return out;
 }
 
-module.exports = { normalizeInboundMessage, collectInboundMessages };
+/** Human-readable summary of what the user sent (for logs). */
+function describeInboundEvent(event) {
+  if (!event || !event.kind) return '(unknown)';
+  switch (event.kind) {
+    case 'text':
+      return event.body || '(empty text)';
+    case 'button':
+      return event.title
+        ? `[button] ${event.title} (${event.buttonId})`
+        : `[button] ${event.buttonId}`;
+    case 'list':
+      return event.title
+        ? `[list] ${event.title} (${event.rowId})`
+        : `[list] ${event.rowId}`;
+    default:
+      return event.messageType ? `[${event.messageType}]` : '(unsupported)';
+  }
+}
+
+/** Clinic / bot number from webhook metadata + env fallback. */
+function describeBotNumber(metadata) {
+  const rawDisplay = metadata?.display_phone_number;
+  const phoneId = metadata?.phone_number_id || process.env.WHATSAPP_PHONE_ID || null;
+  const display =
+    rawDisplay != null && String(rawDisplay).trim()
+      ? `+${String(rawDisplay).replace(/\D/g, '')}`
+      : null;
+  if (display && phoneId) return { display, phoneId, label: `${display} (phone_id ${phoneId})` };
+  if (display) return { display, phoneId, label: display };
+  if (phoneId) return { display: null, phoneId, label: `phone_id ${phoneId}` };
+  return { display: null, phoneId: null, label: '(bot number not configured)' };
+}
+
+module.exports = {
+  normalizeInboundMessage,
+  collectInboundMessages,
+  describeInboundEvent,
+  describeBotNumber,
+};

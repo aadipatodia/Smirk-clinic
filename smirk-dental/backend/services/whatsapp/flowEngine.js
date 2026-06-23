@@ -2,7 +2,12 @@ const WaProcessedMessage = require('../../models/WaProcessedMessage');
 const { normalizeWaId } = require('./normalizeWaId');
 const { resolveRole } = require('./roleResolver');
 const { getSession, touchSession } = require('./sessionStore');
-const { normalizeInboundMessage, collectInboundMessages } = require('./inboundNormalize');
+const {
+  normalizeInboundMessage,
+  collectInboundMessages,
+  describeInboundEvent,
+  describeBotNumber,
+} = require('./inboundNormalize');
 const { handlePatientAction } = require('./flows/patientFlow');
 const { handleDoctorAction } = require('./flows/doctorFlow');
 
@@ -75,7 +80,17 @@ async function processWebhookBody(body) {
       const role = await resolveRole(waId);
       const session = await getSession(waId);
       const event = normalizeInboundMessage(message);
-      console.log('📩 Incoming WA:', { waId, role, eventKind: event.kind, messageId });
+      const bot = describeBotNumber(item.metadata);
+      console.log('📩 Incoming WA', {
+        userPhone: waId,
+        userMessage: describeInboundEvent(event),
+        botNumber: bot.label,
+        botDisplayNumber: bot.display,
+        botPhoneId: bot.phoneId,
+        role,
+        eventKind: event.kind,
+        messageId,
+      });
 
       const flowResult =
         role === 'doctor'
