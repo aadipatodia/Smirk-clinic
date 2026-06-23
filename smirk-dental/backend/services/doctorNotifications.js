@@ -70,8 +70,17 @@ async function notifyDoctorAppointmentRescheduled(appt, oldDate, oldTime) {
   await sendText(to, body);
 }
 
+async function sendDoctorTomorrowSchedule() {
+  const to = getDoctorWaId();
+  if (!to) return;
+  const { buildTomorrowAppointmentsMessage } = require('./whatsapp/flows/doctorFlow');
+  const body = await buildTomorrowAppointmentsMessage();
+  await sendText(to, body);
+}
+
 module.exports = {
   notifyDoctorAppointmentConfirmed,
   notifyDoctorAppointmentCancelled,
   notifyDoctorAppointmentRescheduled,
+  sendDoctorTomorrowSchedule,
 };

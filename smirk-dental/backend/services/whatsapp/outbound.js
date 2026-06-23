@@ -143,6 +143,46 @@ async function sendListMessage(to, bodyText, buttonLabel, rows, headerText) {
 }
 
 /**
+ * Interactive CTA button that opens a URL (e.g. Google review page).
+ */
+async function sendCtaUrl(to, bodyText, displayText, url) {
+  if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
+    console.warn('WhatsApp not configured: skipping sendCtaUrl');
+    return;
+  }
+  const safeUrl = String(url || '').trim();
+  if (!safeUrl) {
+    await sendText(to, bodyText);
+    return;
+  }
+  try {
+    await postMessagePayload({
+      messaging_product: 'whatsapp',
+      to: normalizeTo(to),
+      type: 'interactive',
+      interactive: {
+        type: 'cta_url',
+        body: { text: String(bodyText).slice(0, 1024) },
+        action: {
+          name: 'cta_url',
+          parameters: {
+            display_text: String(displayText || 'Open link').slice(0, 20),
+            url: safeUrl,
+          },
+        },
+      },
+    });
+    logBotReply(`${bodyText} [${displayText} → ${safeUrl}]`);
+  } catch (err) {
+    console.error('❌ WhatsApp sendCtaUrl error:', {
+      ...botSendContext(),
+      toUser: normalizeTo(to),
+      error: err.response?.data || err.message,
+    });
+  }
+}
+
+/**
  * Send an approved template (required for many outbound-initiated messages).
  * @param {string[]} bodyParams positional {{1}}, {{2}}, ...
  */
@@ -188,6 +228,7 @@ module.exports = {
   sendText,
   sendReplyButtons,
   sendListMessage,
+  sendCtaUrl,
   sendTemplate,
   sendWhatsAppMessage,
   normalizeTo,

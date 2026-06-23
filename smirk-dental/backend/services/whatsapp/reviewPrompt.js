@@ -1,29 +1,27 @@
 const Appointment = require('../../models/Appointment');
-const { sendListMessage } = require('./outbound');
+const { getGoogleReviewUrl } = require('../googleReviewUrl');
+const { sendCtaUrl } = require('./outbound');
 
 /**
- * Ask patient to rate visit (1–5) via list reply. Id format: RVW:<stars>:<appointmentId>
+ * Ask patient to leave a Google review after their visit.
  */
 async function sendReviewPromptToPatient(appointment) {
   if (!appointment?.phone) return;
   const clean = String(appointment.phone).replace(/\D/g, '');
   if (!clean) return;
 
-  const id = String(appointment._id);
-  const rows = [5, 4, 3, 2, 1].map((n) => ({
-    id: `RVW:${n}:${id}`,
-    title: `${'⭐'.repeat(n)} (${n}/5)`,
-    description: 'Tap to submit',
-  }));
+  const clinic = process.env.CLINIC_NAME || 'Smirk Dental';
+  const reviewUrl = getGoogleReviewUrl();
+  const body = [
+    `Thank you for visiting ${clinic}! 😊`,
+    '',
+    'We hope you had a great experience. Would you take a moment to leave us a Google review?',
+    '',
+    reviewUrl,
+  ].join('\n');
 
   try {
-    await sendListMessage(
-      clean,
-      `How was your visit with ${process.env.CLINIC_NAME || 'us'}?\n\nPlease rate your experience:`,
-      'Rate visit',
-      rows,
-      'Feedback'
-    );
+    await sendCtaUrl(clean, body, 'Rate on Google', reviewUrl);
     await Appointment.updateOne(
       { _id: appointment._id },
       { $set: { reviewRequestSent: true } }

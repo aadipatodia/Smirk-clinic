@@ -309,14 +309,19 @@ router.put('/:id', async (req, res) => {
 router.post('/:id/review', requireAdmin, async (req, res) => {
   try {
     const appt = await Appointment.findById(req.params.id);
+    if (!appt) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
 
-    const message = `
-Thank you for visiting ${process.env.CLINIC_NAME} 😊
-
-We would love your feedback:
-
-⭐ https://search.google.com/local/writereview?placeid=ChIJYbabucgdDTkRAFAQTaS2fHM
-`;
+    const { getGoogleReviewUrl } = require('../services/googleReviewUrl');
+    const reviewUrl = getGoogleReviewUrl();
+    const message = [
+      `Thank you for visiting ${process.env.CLINIC_NAME || 'Smirk Dental'} 😊`,
+      '',
+      'We would love your feedback on Google:',
+      '',
+      reviewUrl,
+    ].join('\n');
 
     const cleanPhone = appt.phone.replace(/\D/g, '');
     await sendWhatsAppMessage(cleanPhone, message);
