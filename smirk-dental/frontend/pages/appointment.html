@@ -1048,13 +1048,16 @@
           btn.textContent = time + ' (Unavailable)';
         }
 
-        // PRIORITY 2: BLOCKED SLOT (single time) — admin can tap to unblock (not when whole day is blocked)
+        // PRIORITY 2: BLOCKED SLOT (single time) — admin can tap to unblock future slots only
         else if (isTimeSlotBlocked(time, blockedSlots)) {
           btn.classList.add('unavailable');
-          if (isAdminBlock && !isFullDayBlocked(blockedSlots)) {
+          if (isAdminBlock && !isFullDayBlocked(blockedSlots) && !isPast) {
             btn.disabled = false;
             btn.textContent = time + ' (blocked — tap to unblock)';
             btn.addEventListener('click', () => unblockSlot(time));
+          } else if (isPast) {
+            btn.disabled = true;
+            btn.title = 'Time has passed';
           } else {
             btn.disabled = true;
             btn.textContent = time + ' (Unavailable)';

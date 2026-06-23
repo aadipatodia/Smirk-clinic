@@ -143,12 +143,20 @@ async function getDatesWithBlocks(limit = 10) {
   const rows = await Unavailable.find({ date: { $gte: today } })
     .sort({ date: 1, time: 1 })
     .lean();
-  const seen = new Set();
-  const dates = [];
+  const byDate = new Map();
   for (const row of rows) {
-    if (!seen.has(row.date)) {
-      seen.add(row.date);
-      dates.push(row.date);
+    if (!byDate.has(row.date)) {
+      byDate.set(row.date, { fullDay: false, slots: new Set() });
+    }
+    const state = byDate.get(row.date);
+    if (!row.time) state.fullDay = true;
+    else state.slots.add(row.time);
+  }
+  const dates = [];
+  for (const date of [...byDate.keys()].sort()) {
+    const state = byDate.get(date);
+    if (dateHasUnblockableBlocks(date, state)) {
+      dates.push(date);
       if (dates.length >= limit) break;
     }
   }
@@ -158,6 +166,19 @@ async function getDatesWithBlocks(limit = 10) {
 function sortSlotsByClinicOrder(slots) {
   const order = new Map(VALID_SLOTS.map((t, i) => [t, i]));
   return [...slots].sort((a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999));
+}
+
+function futureBlockedSlots(date, slots) {
+  const future = new Set(futureSlotsForDate(date));
+  return sortSlotsByClinicOrder([...new Set(slots)].filter((t) => future.has(t)));
+}
+
+function dateHasUnblockableBlocks(date, { fullDay, slots }) {
+  const future = futureSlotsForDate(date);
+  if (!future.length) return false;
+  if (fullDay) return true;
+  const slotList = slots instanceof Set ? [...slots] : slots;
+  return slotList.some((t) => future.includes(t));
 }
 
 async function getBlockedStateForDate(date) {
@@ -174,7 +195,7 @@ async function getBlockedStateForDate(date) {
 async function sendUnblockDateList(waId) {
   const dates = await getDatesWithBlocks(10);
   if (!dates.length) {
-    await sendText(waId, 'No blocked dates found from today onward.');
+    await sendText(waId, 'No blocked dates with bookable slots left.');
     await sendDoctorMainMenu(waId);
     return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'D_UBK_empty' };
   }
@@ -199,7 +220,12 @@ async function sendUnblockDateList(waId) {
 }
 
 async function sendUnblockSlotPage(waId, date, blockedSlots, start) {
-  const chunk = blockedSlots.slice(start, start + 10);
+  const relevant = futureBlockedSlots(date, blockedSlots);
+  if (!relevant.length) {
+    await sendText(waId, 'No blocked slots left to open on that date.');
+    return sendUnblockDateList(waId);
+  }
+  const chunk = relevant.slice(start, start + 10);
   const rows = chunk.map((t) => ({
     id: `DU_T:${encodeURIComponent(t)}`,
     title: t.slice(0, 24),
@@ -211,7 +237,7 @@ async function sendUnblockSlotPage(waId, date, blockedSlots, start) {
     rows,
     'Unblock'
   );
-  if (start + 10 < blockedSlots.length) {
+  if (start + 10 < relevant.length) {
     await sendReplyButtons(waId, 'Navigate', [
       { id: `DU_TPAGE:${start + 10}`, title: 'More slots' },
       { id: `DU_TPAGE:${Math.max(0, start - 10)}`, title: 'Prev slots' },
@@ -406,9 +432,10 @@ async function handleDoctorUnblockFlow({ waId, event, ctx }) {
 
   if (kind === 'list' && id.startsWith('DU_D:')) {
     const date = id.slice(5);
-    const { fullDay, slots } = await getBlockedStateForDate(date);
-    if (!fullDay && !slots.length) {
-      await sendText(waId, 'Nothing is blocked on that date anymore.');
+    const state = await getBlockedStateForDate(date);
+    const { fullDay, slots } = state;
+    if (!dateHasUnblockableBlocks(date, state)) {
+      await sendText(waId, 'No bookable slots left on that date.');
       return sendUnblockDateList(waId);
     }
     if (fullDay) {
@@ -473,6 +500,11 @@ async function handleDoctorUnblockFlow({ waId, event, ctx }) {
       await sendText(waId, 'No blocked slots on that date.');
       return sendUnblockDateList(waId);
     }
+    const openable = futureBlockedSlots(date, slots);
+    if (!openable.length) {
+      await sendText(waId, 'No blocked slots left to open on that date.');
+      return sendUnblockDateList(waId);
+    }
     return sendUnblockSlotPage(waId, date, slots, 0);
   }
 
@@ -484,7 +516,8 @@ async function handleDoctorUnblockFlow({ waId, event, ctx }) {
       return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'ubk_bad' };
     }
     const { slots } = await getBlockedStateForDate(date);
-    if (!slots.length) {
+    const openable = futureBlockedSlots(date, slots);
+    if (!openable.length) {
       await sendText(waId, 'No blocked slots left on that date.');
       return sendUnblockDateList(waId);
     }
@@ -497,6 +530,10 @@ async function handleDoctorUnblockFlow({ waId, event, ctx }) {
     if (!date || !VALID_SLOTS.includes(time)) {
       await sendDoctorMainMenu(waId);
       return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'ubk_bad' };
+    }
+    if (!futureSlotsForDate(date).includes(time)) {
+      await sendText(waId, 'That slot time has already passed.');
+      return sendUnblockDateList(waId);
     }
     const result = await Unavailable.deleteMany({ date, time });
     if (!result.deletedCount) {
