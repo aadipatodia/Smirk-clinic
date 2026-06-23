@@ -10,10 +10,14 @@ function clinicLabel() {
   return process.env.CLINIC_NAME || 'Smirk Dental';
 }
 
-function patientLine(appt) {
-  const name = appt?.name?.trim() || 'A patient';
-  const phone = appt?.phone ? ` (${appt.phone})` : '';
-  return `${name}${phone}`;
+function patientDetails(appt) {
+  const name = appt?.name?.trim();
+  const phone = appt?.phone?.trim();
+  const lines = [];
+  if (name) lines.push(`👤 ${name}`);
+  if (phone) lines.push(`📞 ${phone}`);
+  if (!lines.length) lines.push('👤 A patient');
+  return lines.join('\n');
 }
 
 function slotLine(date, time) {
@@ -26,7 +30,9 @@ async function notifyDoctorAppointmentConfirmed(appt) {
   const body = [
     `🦷 ${clinicLabel()}`,
     '',
-    `${patientLine(appt)} confirmed an appointment:`,
+    `${patientDetails(appt)}`,
+    '',
+    'Confirmed an appointment:',
     '',
     slotLine(appt.date, appt.time),
   ].join('\n');
@@ -39,7 +45,9 @@ async function notifyDoctorAppointmentCancelled(appt) {
   const body = [
     `🦷 ${clinicLabel()}`,
     '',
-    `${patientLine(appt)} cancelled an appointment:`,
+    `${patientDetails(appt)}`,
+    '',
+    'Cancelled an appointment:',
     '',
     slotLine(appt.date, appt.time),
   ].join('\n');
@@ -52,7 +60,9 @@ async function notifyDoctorAppointmentRescheduled(appt, oldDate, oldTime) {
   const body = [
     `🦷 ${clinicLabel()}`,
     '',
-    `${patientLine(appt)} rescheduled an appointment:`,
+    `${patientDetails(appt)}`,
+    '',
+    'Rescheduled an appointment:',
     '',
     `Was: ${oldDate} at ${oldTime}`,
     `Now: ${appt.date} at ${appt.time}`,

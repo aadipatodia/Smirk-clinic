@@ -4,7 +4,6 @@ const {
   getAvailableSlotsForReschedule,
   createAppointment,
   formatPhoneForAppointment,
-  resolvePatientNameForWa,
   recordReviewRating,
   listUpcomingAppointmentsForWa,
   cancelAppointmentForWa,
@@ -37,6 +36,25 @@ async function sendPatientMainMenu(to) {
 function shortDateLabel(ymd) {
   const [, m, d] = ymd.split('-');
   return `${d}/${m}`;
+}
+
+function sanitizePatientName(text) {
+  const name = String(text || '').trim().replace(/\s+/g, ' ');
+  if (name.length < 2 || name.length > 100) return null;
+  if (!/[a-zA-Z\u0900-\u097F]/.test(name)) return null;
+  return name;
+}
+
+async function sendBookingConfirmPrompt(waId, { name, date, time }) {
+  await sendReplyButtons(
+    waId,
+    `Confirm booking?\n\n👤 ${name}\n📅 ${date}\n🕐 ${time}`,
+    [
+      { id: 'B_CONFIRM', title: 'Confirm' },
+      { id: 'B_BKDATE', title: 'Change date' },
+      { id: 'P_MENU', title: 'Main menu' },
+    ]
+  );
 }
 
 async function sendDatePickList(waId) {
@@ -171,6 +189,30 @@ async function handleBookingLikeFlow({ waId, event, ctx, mode }) {
   const kind = event.kind;
   const id = kind === 'button' ? event.buttonId : kind === 'list' ? event.rowId : '';
 
+  if (kind === 'text' && !resched && ctx.bookDate && ctx.pendingTime) {
+    const name = sanitizePatientName(event.body);
+    if (!name) {
+      await sendText(waId, 'Please enter your full name (at least 2 letters).');
+      return {
+        flow: flowName,
+        step: 'enter_name',
+        contextPatch: {},
+        lastActionId: 'bad_name',
+      };
+    }
+    await sendBookingConfirmPrompt(waId, {
+      name,
+      date: ctx.bookDate,
+      time: ctx.pendingTime,
+    });
+    return {
+      flow: flowName,
+      step: 'confirm',
+      contextPatch: { patientName: name },
+      lastActionId: 'name_ok',
+    };
+  }
+
   if (resched && !ctx.rescheduleId) {
     await sendText(waId, 'Reschedule session expired. Open My visits and try again.');
     await sendPatientMainMenu(waId);
@@ -204,8 +246,17 @@ async function handleBookingLikeFlow({ waId, event, ctx, mode }) {
         await rescheduleAppointmentForWa(ctx.rescheduleId, waId, date, time);
         await sendText(waId, `✅ Rescheduled to ${date} at ${time}.`);
       } else {
+        const name = ctx.patientName?.trim();
+        if (!name) {
+          await sendText(waId, 'Please type your full name first.');
+          return {
+            flow: flowName,
+            step: 'enter_name',
+            contextPatch: { patientName: null },
+            lastActionId: 'need_name',
+          };
+        }
         const phone = formatPhoneForAppointment(waId);
-        const name = await resolvePatientNameForWa(waId);
         const appt = await createAppointment({ name, phone, date, time, notes: 'WhatsApp' });
         await sendText(
           waId,
@@ -335,21 +386,36 @@ async function handleBookingLikeFlow({ waId, event, ctx, mode }) {
       await sendPatientMainMenu(waId);
       return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'bad_idx' };
     }
-    await sendReplyButtons(
+    if (resched) {
+      await sendReplyButtons(
+        waId,
+        `Confirm new time?\n\n📅 ${ctx.bookDate}\n🕐 ${time}`,
+        [
+          { id: confirmB, title: 'Confirm' },
+          { id: bkDateB, title: 'Change date' },
+          { id: 'P_MENU', title: 'Main menu' },
+        ]
+      );
+      return {
+        flow: flowName,
+        step: 'confirm',
+        contextPatch: {
+          pendingTime: time,
+          rescheduleId: ctx.rescheduleId,
+        },
+        lastActionId: `pick_${idx}`,
+      };
+    }
+    await sendText(
       waId,
-      `${resched ? 'Confirm new time?' : 'Confirm booking?'}\n\n📅 ${ctx.bookDate}\n🕐 ${time}`,
-      [
-        { id: confirmB, title: 'Confirm' },
-        { id: bkDateB, title: 'Change date' },
-        { id: 'P_MENU', title: 'Main menu' },
-      ]
+      `Selected: ${ctx.bookDate} at ${time}\n\nPlease type your full name as it should appear on the appointment.`
     );
     return {
       flow: flowName,
-      step: 'confirm',
+      step: 'enter_name',
       contextPatch: {
         pendingTime: time,
-        ...(resched ? { rescheduleId: ctx.rescheduleId } : {}),
+        patientName: null,
       },
       lastActionId: `pick_${idx}`,
     };
