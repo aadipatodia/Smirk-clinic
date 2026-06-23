@@ -341,3 +341,25 @@ loadUserAppointment();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
   else run();
 })();
+
+// ── Floating WhatsApp CTA (all pages that load shared.js) ──
+(function injectFloatingWhatsApp() {
+  const WA_NUMBER = '919217401284';
+  const WA_TEXT = encodeURIComponent("Hi Smirk Dental, I'd like to book an appointment");
+
+  function mount() {
+    if (document.getElementById('floatingWhatsApp')) return;
+    const link = document.createElement('a');
+    link.id = 'floatingWhatsApp';
+    link.href = `https://wa.me/${WA_NUMBER}?text=${WA_TEXT}`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.className = 'floating-whatsapp';
+    link.setAttribute('aria-label', 'Book on WhatsApp');
+    link.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> Book on WhatsApp';
+    document.body.appendChild(link);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
+  else mount();
+})();

@@ -25,6 +25,7 @@ async function sendDoctorMainMenu(to) {
       { id: 'D_TOM', title: 'Tomorrow schedule', description: 'Confirmed visits' },
       { id: 'D_MGR', title: 'Update visit status', description: 'Complete / no-show' },
       { id: 'D_BLK', title: 'Block availability', description: 'Day or single slot' },
+      { id: 'D_UBK', title: 'Unblock availability', description: 'Open day or slot' },
       { id: 'D_MENU', title: 'Refresh this menu', description: 'Show options again' },
     ],
     'Doctor'
@@ -133,6 +134,106 @@ async function sendBlockDateList(waId) {
     step: 'pick_block_date',
     resetContext: true,
     lastActionId: 'D_BLK',
+  };
+}
+
+async function getDatesWithBlocks(limit = 10) {
+  const today = todayYmdIst();
+  if (!today) return [];
+  const rows = await Unavailable.find({ date: { $gte: today } })
+    .sort({ date: 1, time: 1 })
+    .lean();
+  const seen = new Set();
+  const dates = [];
+  for (const row of rows) {
+    if (!seen.has(row.date)) {
+      seen.add(row.date);
+      dates.push(row.date);
+      if (dates.length >= limit) break;
+    }
+  }
+  return dates;
+}
+
+function sortSlotsByClinicOrder(slots) {
+  const order = new Map(VALID_SLOTS.map((t, i) => [t, i]));
+  return [...slots].sort((a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999));
+}
+
+async function getBlockedStateForDate(date) {
+  const rows = await Unavailable.find({ date }).lean();
+  let fullDay = false;
+  const slots = [];
+  rows.forEach((row) => {
+    if (!row.time) fullDay = true;
+    else slots.push(row.time);
+  });
+  return { fullDay, slots: sortSlotsByClinicOrder([...new Set(slots)]) };
+}
+
+async function sendUnblockDateList(waId) {
+  const dates = await getDatesWithBlocks(10);
+  if (!dates.length) {
+    await sendText(waId, 'No blocked dates found from today onward.');
+    await sendDoctorMainMenu(waId);
+    return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'D_UBK_empty' };
+  }
+  const rows = dates.map((ymd) => ({
+    id: `DU_D:${ymd}`,
+    title: ymd.slice(5).replace('-', '/'),
+    description: ymd,
+  }));
+  await sendListMessage(
+    waId,
+    'Choose a date to unblock (IST).',
+    'Pick date',
+    rows,
+    'Unblock'
+  );
+  return {
+    flow: 'doctor_unblock',
+    step: 'pick_unblock_date',
+    resetContext: true,
+    lastActionId: 'D_UBK',
+  };
+}
+
+async function sendUnblockSlotPage(waId, date, blockedSlots, start) {
+  const chunk = blockedSlots.slice(start, start + 10);
+  const rows = chunk.map((t) => ({
+    id: `DU_T:${encodeURIComponent(t)}`,
+    title: t.slice(0, 24),
+  }));
+  await sendListMessage(
+    waId,
+    `Blocked slots on ${date} (page ${Math.floor(start / 10) + 1}). Tap one to open it.`,
+    'Pick slot',
+    rows,
+    'Unblock'
+  );
+  if (start + 10 < blockedSlots.length) {
+    await sendReplyButtons(waId, 'Navigate', [
+      { id: `DU_TPAGE:${start + 10}`, title: 'More slots' },
+      { id: `DU_TPAGE:${Math.max(0, start - 10)}`, title: 'Prev slots' },
+      { id: 'DU_CAN', title: 'Cancel' },
+    ]);
+  } else if (start > 0) {
+    await sendReplyButtons(waId, 'Done?', [
+      { id: `DU_TPAGE:${Math.max(0, start - 10)}`, title: 'Prev slots' },
+      { id: 'DU_CAN', title: 'Cancel' },
+      { id: 'D_MENU', title: 'Main menu' },
+    ]);
+  } else {
+    await sendReplyButtons(waId, 'Done?', [
+      { id: 'DU_CAN', title: 'Cancel' },
+      { id: 'D_MENU', title: 'Main menu' },
+    ]);
+  }
+  return {
+    flow: 'doctor_unblock',
+    step: 'pick_unblock_slot',
+    contextPatch: { unblockDate: date, slotPage: start },
+    lastActionId: `DU_TPAGE:${start}`,
   };
 }
 
@@ -294,6 +395,123 @@ async function handleDoctorBlockFlow({ waId, event, ctx }) {
   return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'blk_recover' };
 }
 
+async function handleDoctorUnblockFlow({ waId, event, ctx }) {
+  const kind = event.kind;
+  const id = kind === 'button' ? event.buttonId : kind === 'list' ? event.rowId : '';
+
+  if (kind === 'button' && (id === 'D_MENU' || id === 'DU_CAN')) {
+    await sendDoctorMainMenu(waId);
+    return { flow: 'idle', step: '0', resetContext: true, lastActionId: id };
+  }
+
+  if (kind === 'list' && id.startsWith('DU_D:')) {
+    const date = id.slice(5);
+    const { fullDay, slots } = await getBlockedStateForDate(date);
+    if (!fullDay && !slots.length) {
+      await sendText(waId, 'Nothing is blocked on that date anymore.');
+      return sendUnblockDateList(waId);
+    }
+    if (fullDay) {
+      await sendReplyButtons(
+        waId,
+        `${date} is fully blocked.\n\nUnblock the entire day?`,
+        [
+          { id: 'DU_ALL', title: 'Unblock full day' },
+          { id: 'DU_CAN', title: 'Cancel' },
+        ]
+      );
+      return {
+        flow: 'doctor_unblock',
+        step: 'unblock_kind',
+        contextPatch: { unblockDate: date, fullDayBlock: true },
+        lastActionId: date,
+      };
+    }
+    return sendUnblockSlotPage(waId, date, slots, 0);
+  }
+
+  if (kind === 'button' && id === 'DU_ALL') {
+    const date = ctx.unblockDate;
+    if (!date) {
+      await sendDoctorMainMenu(waId);
+      return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'ubk_bad' };
+    }
+    const result = await Unavailable.deleteMany({
+      date,
+      $or: [{ time: null }, { time: { $exists: false } }],
+    });
+    if (!result.deletedCount) {
+      await sendText(waId, 'No full-day block found on that date.');
+    } else {
+      await sendText(waId, `✅ Full day unblocked: ${date}`);
+    }
+    await sendDoctorMainMenu(waId);
+    return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'DU_ALL' };
+  }
+
+  if (kind === 'button' && id === 'DU_SLOT') {
+    const date = ctx.unblockDate;
+    if (!date) {
+      await sendDoctorMainMenu(waId);
+      return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'ubk_bad' };
+    }
+    const { fullDay, slots } = await getBlockedStateForDate(date);
+    if (fullDay) {
+      await sendText(waId, 'That day is fully blocked. Unblock the full day first.');
+      await sendReplyButtons(waId, `${date} is fully blocked.`, [
+        { id: 'DU_ALL', title: 'Unblock full day' },
+        { id: 'DU_CAN', title: 'Cancel' },
+      ]);
+      return {
+        flow: 'doctor_unblock',
+        step: 'unblock_kind',
+        contextPatch: { unblockDate: date, fullDayBlock: true },
+        lastActionId: 'DU_SLOT_full',
+      };
+    }
+    if (!slots.length) {
+      await sendText(waId, 'No blocked slots on that date.');
+      return sendUnblockDateList(waId);
+    }
+    return sendUnblockSlotPage(waId, date, slots, 0);
+  }
+
+  if (kind === 'button' && id.startsWith('DU_TPAGE:')) {
+    const start = parseInt(id.slice('DU_TPAGE:'.length), 10);
+    const date = ctx.unblockDate;
+    if (!date) {
+      await sendDoctorMainMenu(waId);
+      return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'ubk_bad' };
+    }
+    const { slots } = await getBlockedStateForDate(date);
+    if (!slots.length) {
+      await sendText(waId, 'No blocked slots left on that date.');
+      return sendUnblockDateList(waId);
+    }
+    return sendUnblockSlotPage(waId, date, slots, start);
+  }
+
+  if (kind === 'list' && id.startsWith('DU_T:')) {
+    const time = decodeURIComponent(id.slice(5));
+    const date = ctx.unblockDate;
+    if (!date || !VALID_SLOTS.includes(time)) {
+      await sendDoctorMainMenu(waId);
+      return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'ubk_bad' };
+    }
+    const result = await Unavailable.deleteMany({ date, time });
+    if (!result.deletedCount) {
+      await sendText(waId, 'That slot was not blocked.');
+    } else {
+      await sendText(waId, `✅ Unblocked ${time} on ${date}`);
+    }
+    await sendDoctorMainMenu(waId);
+    return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'DU_T' };
+  }
+
+  await sendDoctorMainMenu(waId);
+  return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'ubk_recover' };
+}
+
 async function handleDoctorManageFlow({ waId, event, ctx }) {
   const kind = event.kind;
   const id = kind === 'button' ? event.buttonId : kind === 'list' ? event.rowId : '';
@@ -364,6 +582,9 @@ async function handleDoctorListOrButton({ waId, event, session }) {
   if (flow === 'doctor_block') {
     return handleDoctorBlockFlow({ waId, event, ctx });
   }
+  if (flow === 'doctor_unblock') {
+    return handleDoctorUnblockFlow({ waId, event, ctx });
+  }
   if (flow === 'doctor_manage') {
     return handleDoctorManageFlow({ waId, event, ctx });
   }
@@ -386,6 +607,8 @@ async function handleDoctorListOrButton({ waId, event, session }) {
         return await sendTodayManageList(waId);
       case 'D_BLK':
         return await sendBlockDateList(waId);
+      case 'D_UBK':
+        return await sendUnblockDateList(waId);
       case 'D_MENU':
         await sendDoctorMainMenu(waId);
         return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'D_MENU' };
@@ -406,6 +629,9 @@ async function handleDoctorListOrButton({ waId, event, session }) {
 
   if (id?.startsWith('DB_D:') || id?.startsWith('DB_T:') || id?.startsWith('DB_')) {
     return handleDoctorBlockFlow({ waId, event, ctx });
+  }
+  if (id?.startsWith('DU_D:') || id?.startsWith('DU_T:') || id?.startsWith('DU_')) {
+    return handleDoctorUnblockFlow({ waId, event, ctx });
   }
   if (id?.startsWith('D_PICK:') || id?.startsWith('D_DONE:') || id?.startsWith('D_NS:')) {
     return handleDoctorManageFlow({ waId, event, ctx });

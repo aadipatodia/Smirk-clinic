@@ -320,7 +320,7 @@ button, input, textarea, select { font-family: inherit; }
 .fade-up-delay-3 { transition-delay: 0.3s; }
 .fade-up-delay-4 { transition-delay: 0.4s; }
 
-/* ── FLOATING CTA ── */
+/* ── FLOATING CTAs (fixed — visible while scrolling, all pages via shared.js) ── */
 .floating-cta {
   position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 800;
   animation: floatPulse 3s ease-in-out infinite;
@@ -328,6 +328,55 @@ button, input, textarea, select { font-family: inherit; }
 @keyframes floatPulse {
   0%,100% { transform: translateY(0); box-shadow: 0 8px 30px rgba(42,175,169,0.4); }
   50%      { transform: translateY(-5px); box-shadow: 0 14px 40px rgba(42,175,169,0.5); }
+}
+
+.floating-whatsapp {
+  position: fixed;
+  bottom: calc(1.5rem + 3.25rem);
+  right: 1.5rem;
+  z-index: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: var(--r-pill);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  text-decoration: none;
+  background: #25D366;
+  color: #fff;
+  border: none;
+  box-shadow: 0 8px 28px rgba(37, 211, 102, 0.45);
+  animation: floatPulseWa 3s ease-in-out infinite;
+  transition: background var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
+}
+.floating-whatsapp i { font-size: 1.15rem; }
+.floating-whatsapp:hover {
+  background: #20bd5a;
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(37, 211, 102, 0.55);
+}
+@keyframes floatPulseWa {
+  0%, 100% { transform: translateY(0); box-shadow: 0 8px 28px rgba(37, 211, 102, 0.45); }
+  50% { transform: translateY(-4px); box-shadow: 0 14px 36px rgba(37, 211, 102, 0.55); }
+}
+
+.floating-review {
+  position: fixed;
+  bottom: calc(1.5rem + 6.5rem);
+  right: 1.5rem;
+  z-index: 800;
+  animation: floatPulseReview 2.5s ease-in-out infinite;
+}
+.floating-review:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+}
+@keyframes floatPulseReview {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
 }
 
 /* ── DIVIDER ── */
@@ -462,8 +511,15 @@ button, input, textarea, select { font-family: inherit; }
     padding: 0.55rem 1rem;
     font-size: 0.8rem;
   }
+  a.floating-whatsapp {
+    bottom: calc(1rem + 3rem);
+    right: 1rem;
+    left: auto;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.78rem;
+  }
   a.btn.btn-primary.floating-review {
-    bottom: 4.75rem;
+    bottom: calc(1rem + 6rem);
     right: 1rem;
     left: auto;
     padding: 0.5rem 0.9rem;
