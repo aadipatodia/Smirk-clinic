@@ -1215,7 +1215,22 @@
       try {
         let res;
 
-        if (isRescheduleFlow) {
+        const isAdminReschedule = isRescheduleFlow
+          && (localStorage.getItem('adminAuth') === 'true' || sessionStorage.getItem('adminAuth') === 'true');
+
+        if (isRescheduleFlow && isAdminReschedule) {
+          res = await fetch(`${API_BASE}/appointments/${rescheduleId}/admin-reschedule`, {
+            method: 'PUT',
+            headers: adminHeaders(),
+            body: JSON.stringify({
+              date: selectedDate,
+              time: selectedTime,
+            }),
+          });
+
+          localStorage.removeItem('rescheduleId');
+
+        } else if (isRescheduleFlow) {
           res = await fetch(`${API_BASE}/appointments/${rescheduleId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },

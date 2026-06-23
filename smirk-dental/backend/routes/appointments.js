@@ -260,6 +260,50 @@ async function handleCancel(req, res) {
 router.put('/:id/cancel', handleCancel);
 router.delete('/:id', handleCancel);
 
+router.put('/:id/admin-reschedule', requireAdmin, async (req, res) => {
+  try {
+    const { date, time } = req.body;
+    const appt = await Appointment.findById(req.params.id);
+    if (!appt) {
+      return res.status(404).json({ success: false, message: 'Appointment not found.' });
+    }
+    if (appt.status !== 'confirmed') {
+      return res.status(400).json({ success: false, message: 'Only confirmed appointments can be rescheduled.' });
+    }
+    if (!VALID_SLOTS.includes(time)) {
+      return res.status(400).json({ success: false, message: 'Invalid time slot.' });
+    }
+    if (!isValidAppointmentDate(date)) {
+      return res.status(400).json({ success: false, message: 'Invalid date.' });
+    }
+
+    const existing = await Appointment.findOne({
+      date,
+      time,
+      status: 'confirmed',
+      _id: { $ne: req.params.id },
+    });
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Slot already booked.' });
+    }
+
+    const oldDate = appt.date;
+    const oldTime = appt.time;
+    appt.date = date;
+    appt.time = time;
+    await appt.save();
+    await notifyDoctorAppointmentRescheduled(appt, oldDate, oldTime);
+
+    res.json({ success: true, appointment: appt });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Slot already booked.' });
+    }
+    console.error('[ADMIN RESCHEDULE]', err);
+    res.status(500).json({ success: false });
+  }
+});
+
 router.put('/:id', async (req, res) => {
   try {
     const { date, time, userId } = req.body;

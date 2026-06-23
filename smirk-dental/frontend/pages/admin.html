@@ -28,35 +28,88 @@
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
         }
 
+        .appt-table {
+            min-width: 820px;
+        }
+
         .appt-row {
             display: grid;
-            grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr auto;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
+            grid-template-columns: 1.3fr 1.1fr 0.95fr 0.85fr 0.95fr minmax(190px, auto);
+            gap: 12px;
+            padding: 14px 16px;
             align-items: center;
             font-size: 0.9rem;
         }
 
+        .appt-row > div {
+            min-width: 0;
+            text-align: left;
+        }
+
         .appt-row.header {
-            font-weight: bold;
-            background: #f9f9f9;
+            font-weight: 600;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .appt-row.data {
+            border-bottom: 1px solid #f1f5f9;
+            background: white;
+        }
+
+        .appt-row.data:hover {
+            background: #fafbfc;
+        }
+
+        .appt-row.data:last-child {
+            border-bottom: none;
         }
 
         .status {
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.75rem;
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
         }
 
-        .confirmed {
+        .status-confirmed {
             background: #E6FFFA;
             color: #0F766E;
         }
 
-        .cancelled {
+        .status-cancelled {
             background: #FEF2F2;
             color: #B91C1C;
+        }
+
+        .status-completed {
+            background: #EFF6FF;
+            color: #1D4ED8;
+        }
+
+        .status-noshow {
+            background: #FFF7ED;
+            color: #C2410C;
+        }
+
+        .appt-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .appt-empty {
+            padding: 30px;
+            text-align: center;
+            color: #64748b;
         }
 
         .admin-login-screen {
@@ -133,7 +186,7 @@
         }
 
         .appt-list-inner {
-            min-width: 720px;
+            min-width: 820px;
         }
 
         .admin-filter-row {
@@ -229,7 +282,7 @@
             </div>
 
             <div class="admin-card appt-list-scroll">
-                <div class="appt-list-inner">
+                <div class="appt-list-inner appt-table">
                     <div class="appt-row header">
                         <div>Name</div>
                         <div>Phone</div>
@@ -318,11 +371,12 @@
         function updateStats(data) {
             const todayStr = new Date().toLocaleDateString('en-CA');
 
-            const today = data.filter(a => a.date === todayStr);
-            const cancelled = 0; // no longer used
+            const today = data.filter(a => a.date === todayStr && a.status === 'confirmed');
+            const cancelled = data.filter(a => a.status === 'cancelled');
+            const active = data.filter(a => a.status === 'confirmed');
 
             document.getElementById('statToday').textContent = today.length;
-            document.getElementById('statTotal').textContent = data.length;
+            document.getElementById('statTotal').textContent = active.length;
             document.getElementById('statCancelled').textContent = cancelled.length;
         }
 
@@ -332,12 +386,32 @@
             return d.innerHTML;
         }
 
+        function statusBadge(status) {
+            const s = String(status || 'confirmed').toLowerCase();
+            const labels = {
+                confirmed: 'Confirmed',
+                cancelled: 'Cancelled',
+                completed: 'Completed',
+                'no-show': 'No show',
+            };
+            const cls = s === 'no-show' ? 'status-noshow' : `status-${s}`;
+            return `<span class="status ${cls}">${esc(labels[s] || s)}</span>`;
+        }
+
+        function sortAppointments(list) {
+            return [...list].sort((a, b) => {
+                if (a.date !== b.date) return a.date.localeCompare(b.date);
+                return String(a.time || '').localeCompare(String(b.time || ''));
+            });
+        }
+
         function renderAppointments(data) {
             const container = document.getElementById('appointmentsList');
+            const rows = sortAppointments(data);
 
-            if (!data.length) {
+            if (!rows.length) {
                 container.innerHTML = `
-            <div style="padding:30px;text-align:center;color:gray;">
+            <div class="appt-empty">
                 <div style="font-size:2rem;margin-bottom:10px;">📭</div>
                 <div>No appointments found</div>
             </div>
@@ -345,23 +419,25 @@
                 return;
             }
 
-            container.innerHTML = data.map(a => `
-        <div class="appt-row" style="border-radius:10px;margin-bottom:10px;background:white;box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+            container.innerHTML = rows.map(a => {
+                const id = esc(a._id);
+                const actions = a.status === 'confirmed'
+                    ? `<div class="appt-actions">
+                <button class="btn btn-sm btn-secondary" onclick="reschedule('${id}')">Reschedule</button>
+                <button class="btn btn-sm btn-primary" onclick="cancel('${id}')">Cancel</button>
+               </div>`
+                    : '<span style="color:#94a3b8;font-size:0.82rem">—</span>';
+
+                return `
+        <div class="appt-row data">
             <div><strong>${esc(a.name)}</strong></div>
             <div>${esc(a.phone)}</div>
             <div>${esc(a.date)}</div>
             <div>${esc(a.time)}</div>
-            <div>
-                <span class="status confirmed">
-                    confirmed
-                </span>
-            </div>
-            <div style="display:flex;gap:6px;">
-                <button class="btn btn-sm btn-secondary" onclick="reschedule('${esc(a._id)}')">Reschedule</button>
-                <button class="btn btn-sm btn-primary" onclick="cancel('${esc(a._id)}')">Cancel</button>
-            </div>
-        </div>
-        `).join('');
+            <div>${statusBadge(a.status)}</div>
+            <div>${actions}</div>
+        </div>`;
+            }).join('');
         }
 
         function filterData(type) {
@@ -370,12 +446,10 @@
             let filtered = [];
 
             if (type === 'today') {
-                filtered = ALL_APPOINTMENTS.filter(a => a.date === todayStr);
-            }
-            else if (type === 'upcoming') {
-                filtered = ALL_APPOINTMENTS.filter(a => a.date > todayStr);
-            }
-            else {
+                filtered = ALL_APPOINTMENTS.filter(a => a.date === todayStr && a.status === 'confirmed');
+            } else if (type === 'upcoming') {
+                filtered = ALL_APPOINTMENTS.filter(a => a.date > todayStr && a.status === 'confirmed');
+            } else {
                 filtered = ALL_APPOINTMENTS;
             }
 
@@ -393,7 +467,9 @@
         }
 
         async function cancel(id) {
-            await fetch(`${API}/appointments/${id}/cancel`, {
+            if (!confirm('Cancel this appointment?')) return;
+
+            const res = await fetch(`${API}/appointments/${id}/cancel`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -401,17 +477,28 @@
                 }
             });
 
-            loadAppointments();
+            if (!res.ok) {
+                alert('Could not cancel appointment.');
+                return;
+            }
 
-            showToast("Cancelled successfully ❌");
+            await loadAppointments();
         }
 
         async function reschedule(id) {
-            // Save appointment ID temporarily
-            localStorage.setItem('rescheduleId', id);
+            const appt = ALL_APPOINTMENTS.find(a => a._id === id);
+            if (!appt) return;
 
-            // Redirect to booking page
-            window.location.href = "../pages/appointment.html?reschedule=true";
+            localStorage.setItem('rescheduleId', id);
+            localStorage.setItem('userAppointment', JSON.stringify({
+                _id: id,
+                name: appt.name,
+                phone: appt.phone,
+                date: appt.date,
+                time: appt.time,
+            }));
+
+            window.location.href = 'appointment.html?reschedule=true';
         }
 
         if (
