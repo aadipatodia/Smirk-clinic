@@ -59,19 +59,65 @@
             color: #B91C1C;
         }
 
-        .login-box {
+        .admin-login-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+        }
+
+        .admin-login-card {
+            width: 100%;
             max-width: 400px;
-            margin: 0 auto;
-            padding: 30px;
-            text-align: center;
             background: white;
-            border-radius: var(--r-lg);
-            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.05);
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 90%;
+            border-radius: 18px;
+            padding: 36px 32px;
+            box-shadow: 0 25px 60px rgba(15, 42, 56, 0.12);
+            text-align: center;
+        }
+
+        .admin-login-card h2 {
+            font-family: var(--font-display, Georgia, serif);
+            font-size: 1.6rem;
+            color: var(--navy, #0f2a38);
+            margin-bottom: 1.5rem;
+        }
+
+        .admin-login-card .form-input {
+            margin-bottom: 1rem;
+        }
+
+        .admin-login-card .remember-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0.55rem;
+            margin-bottom: 1.25rem;
+            text-align: left;
+        }
+
+        .admin-login-card .remember-row input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+            margin: 0;
+            flex-shrink: 0;
+            accent-color: var(--teal, #2aafaa);
+            cursor: pointer;
+        }
+
+        .admin-login-card .remember-row label {
+            font-size: 0.875rem;
+            color: var(--grey, #666);
+            line-height: 1.35;
+            cursor: pointer;
+        }
+
+        .admin-login-card .btn-primary {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            justify-content: center;
         }
 
         .admin-stats-row {
@@ -122,14 +168,16 @@
 
 <body style="background:#f4f7fb;">
 
-    <div id="loginScreen" class="login-box">
-        <h2 style="margin-bottom:20px;">Admin Login</h2>
-        <input type="password" id="adminPass" placeholder="Enter password" class="form-input" style="width:100%;margin-bottom:15px;">
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:20px;font-size:0.85rem;">
-            <input type="checkbox" id="rememberMe">
-            <label for="rememberMe">Stay logged in on this device</label>
+    <div id="loginScreen" class="admin-login-screen">
+        <div class="admin-login-card">
+            <h2>Admin Login</h2>
+            <input type="password" id="adminPass" placeholder="Enter password" class="form-input">
+            <div class="remember-row">
+                <input type="checkbox" id="rememberMe">
+                <label for="rememberMe">Stay logged in on this device</label>
+            </div>
+            <button class="btn btn-primary" onclick="login()">Login</button>
         </div>
-        <button class="btn btn-primary" onclick="login()" style="width:100%;padding:12px;font-size:1rem;">Login</button>
     </div>
 
     <div id="adminPanel" style="display:none">
