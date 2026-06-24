@@ -32,8 +32,8 @@ function startScheduler() {
         timezone: 'Asia/Kolkata',
     });
 
-    // Periodic checkup / follow-up nudge (Mondays 9:00 IST)
-    cron.schedule('0 9 * * 1', async () => {
+    // Check-up due reminders — monthly / quarterly / 6-month anniversaries (daily 9:00 IST)
+    cron.schedule('0 9 * * *', async () => {
         try {
             await runCheckupReminders();
         } catch (err) {

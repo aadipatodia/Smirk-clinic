@@ -40,4 +40,39 @@ function monthsAgoYmdIst(monthsBack) {
   return formatDateYmdInTimeZone(base, 'Asia/Kolkata');
 }
 
-module.exports = { todayYmdIst, formatDateYmdInTimeZone, addDaysYmdIst, monthsAgoYmdIst };
+/** Last calendar day for month (month 1–12). */
+function lastDayOfMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/** Day-of-month for a visit anniversary in a given year/month (handles Jan 31 → Feb 28). */
+function anniversaryDayInMonth(visitDay, year, month) {
+  return Math.min(visitDay, lastDayOfMonth(year, month));
+}
+
+/** True when `todayYmd` is the monthly anniversary of `visitYmd` (IST calendar), after the visit itself. */
+function isAnniversaryDay(visitYmd, todayYmd) {
+  if (!visitYmd || !todayYmd || todayYmd <= visitYmd) return false;
+  const [, , vd] = visitYmd.split('-').map(Number);
+  const [ty, tm, td] = todayYmd.split('-').map(Number);
+  return td === anniversaryDayInMonth(vd, ty, tm);
+}
+
+/** Whole months elapsed from visit date to today (IST calendar). */
+function monthsSinceVisit(visitYmd, todayYmd) {
+  if (!visitYmd || !todayYmd || todayYmd <= visitYmd) return 0;
+  const [vy, vm, vd] = visitYmd.split('-').map(Number);
+  const [ty, tm, td] = todayYmd.split('-').map(Number);
+  let months = (ty - vy) * 12 + (tm - vm);
+  if (td < anniversaryDayInMonth(vd, ty, tm)) months -= 1;
+  return Math.max(0, months);
+}
+
+module.exports = {
+  todayYmdIst,
+  formatDateYmdInTimeZone,
+  addDaysYmdIst,
+  monthsAgoYmdIst,
+  isAnniversaryDay,
+  monthsSinceVisit,
+};
