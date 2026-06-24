@@ -44,7 +44,29 @@ async function notifyPatientAppointmentRescheduled(appt, oldDate, oldTime) {
   await sendText(to, body);
 }
 
+async function notifyPatientAppointmentConfirmed(appt) {
+  const to = patientWaId(appt);
+  if (!to) return;
+  const name = appt?.name?.trim() || 'there';
+  const body = [
+    `🦷 ${clinicLabel()}`,
+    '',
+    `Hi ${name},`,
+    '',
+    'Your appointment is confirmed!',
+    '',
+    `📅 Date: ${appt.date}`,
+    `🕐 Time: ${appt.time}`,
+    '',
+    '📍 Smirk Dental Clinic, Vasant Kunj',
+    '',
+    'See you soon 😊',
+  ].join('\n');
+  await sendText(to, body);
+}
+
 module.exports = {
   notifyPatientAppointmentCancelled,
   notifyPatientAppointmentRescheduled,
+  notifyPatientAppointmentConfirmed,
 };

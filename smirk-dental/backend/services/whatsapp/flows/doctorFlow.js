@@ -9,6 +9,13 @@ const {
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 const { todayYmdIst, addDaysYmdIst } = require('../dateIst');
 const { sendReviewPromptToPatient } = require('../reviewPrompt');
+const {
+  startDoctorBook,
+  handleDoctorBookFlow,
+  handleDoctorCancelFlow,
+  handleDoctorRescheduleFlow,
+  sendUpcomingApptPicker,
+} = require('./doctorApptFlow');
 
 function doctorMenuBody() {
   const name = process.env.CLINIC_NAME || 'Smirk Dental';
@@ -23,7 +30,10 @@ async function sendDoctorMainMenu(to) {
     [
       { id: 'D_SUM', title: "Today's schedule", description: 'List confirmed visits' },
       { id: 'D_TOM', title: 'Tomorrow schedule', description: 'Confirmed visits' },
-      { id: 'D_MGR', title: 'Update visit status', description: 'Complete / no-show' },
+      { id: 'D_BOOK', title: 'Book for patient', description: 'Phone / walk-in booking' },
+      { id: 'D_CNCL', title: 'Cancel appointment', description: 'Cancel a patient visit' },
+      { id: 'D_RSV', title: 'Reschedule visit', description: 'Move a patient slot' },
+      { id: 'D_MGR', title: 'Mark complete', description: 'Complete / no-show' },
       { id: 'D_BLK', title: 'Block availability', description: 'Day or single slot' },
       { id: 'D_UBK', title: 'Unblock availability', description: 'Open day or slot' },
       { id: 'D_MENU', title: 'Refresh this menu', description: 'Show options again' },
@@ -625,6 +635,15 @@ async function handleDoctorListOrButton({ waId, event, session }) {
   if (flow === 'doctor_manage') {
     return handleDoctorManageFlow({ waId, event, ctx });
   }
+  if (flow === 'doctor_book') {
+    return handleDoctorBookFlow({ waId, event, ctx, session });
+  }
+  if (flow === 'doctor_cancel') {
+    return handleDoctorCancelFlow({ waId, event, ctx });
+  }
+  if (flow === 'doctor_reschedule') {
+    return handleDoctorRescheduleFlow({ waId, event, ctx });
+  }
 
   if (kind === 'list') {
     switch (id) {
@@ -642,6 +661,22 @@ async function handleDoctorListOrButton({ waId, event, session }) {
       }
       case 'D_MGR':
         return await sendTodayManageList(waId);
+      case 'D_BOOK':
+        return await startDoctorBook(waId);
+      case 'D_CNCL':
+        return sendUpcomingApptPicker(waId, {
+          prefix: 'DC',
+          header: 'Pick an appointment to cancel:',
+          flow: 'doctor_cancel',
+          buttonLabel: 'Pick visit',
+        });
+      case 'D_RSV':
+        return sendUpcomingApptPicker(waId, {
+          prefix: 'DR',
+          header: 'Pick an appointment to reschedule:',
+          flow: 'doctor_reschedule',
+          buttonLabel: 'Pick visit',
+        });
       case 'D_BLK':
         return await sendBlockDateList(waId);
       case 'D_UBK':
@@ -673,13 +708,28 @@ async function handleDoctorListOrButton({ waId, event, session }) {
   if (id?.startsWith('D_PICK:') || id?.startsWith('D_DONE:') || id?.startsWith('D_NS:')) {
     return handleDoctorManageFlow({ waId, event, ctx });
   }
+  if (id?.startsWith('DK_') || id === 'DK_CONFIRM') {
+    return handleDoctorBookFlow({ waId, event, ctx, session });
+  }
+  if (id?.startsWith('DC_')) {
+    return handleDoctorCancelFlow({ waId, event, ctx });
+  }
+  if (id?.startsWith('DR_')) {
+    return handleDoctorRescheduleFlow({ waId, event, ctx });
+  }
 
   await sendDoctorMainMenu(waId);
   return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'unknown' };
 }
 
 async function handleDoctorAction({ waId, event, session }) {
+  const ctx = session?.context && typeof session.context === 'object' ? session.context : {};
+  const flow = session?.flow || 'idle';
+
   if (event.kind === 'text') {
+    if (flow === 'doctor_book') {
+      return handleDoctorBookFlow({ waId, event, ctx, session });
+    }
     await sendDoctorMainMenu(waId);
     return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'text_open_menu' };
   }

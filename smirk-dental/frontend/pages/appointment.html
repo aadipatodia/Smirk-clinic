@@ -661,6 +661,7 @@
     const isReschedule = urlParams.get('reschedule');
     const rescheduleId = localStorage.getItem('rescheduleId');
     const isAdminReschedule = !!(isReschedule && rescheduleId && isAdminAuth);
+    const isAdminBook = !!(urlParams.get('adminBook') && isAdminAuth);
     let currentUserSlot = null;
 
     function getAdminPw() {
@@ -671,6 +672,13 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      if (isAdminBook) {
+        document.getElementById('patientName').value = '';
+        document.getElementById('patientPhone').value = '';
+        document.getElementById('patientPhone').readOnly = false;
+        return;
+      }
+
       if (user && user.name) {
         document.getElementById('patientName').value = user.name;
       }
@@ -1181,6 +1189,62 @@
         return;
       }
 
+      if (isAdminBook) {
+        if (!selectedDate) { showErr('Please select a date.'); return; }
+        if (!selectedTime) { showErr('Please select a time slot.'); return; }
+        if (!name) { showErr('Please enter the patient\'s full name.'); return; }
+        if (!isValidPhone(phone)) {
+          showErr('Enter a valid patient phone number');
+          return;
+        }
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Booking...';
+
+        try {
+          const res = await fetch(`${API_BASE}/appointments/admin`, {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify({
+              name,
+              phone,
+              date: selectedDate,
+              time: selectedTime,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Booking failed');
+
+          document.getElementById('bookingForm').classList.add('hiding');
+          setTimeout(() => {
+            document.getElementById('patientDetailsSection').style.display = 'none';
+            document.getElementById('bookingForm').style.display = 'none';
+            const s = document.getElementById('successState');
+            s.classList.add('show');
+            s.querySelector('h3').textContent = 'Appointment Booked';
+            s.querySelector('p').textContent = 'The patient will receive a WhatsApp confirmation.';
+            document.getElementById('confirmDetails').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          <div><strong>👤 Patient:</strong> ${name}</div>
+          <div><strong>📞 Phone:</strong> ${phone}</div>
+          <div><strong>📅 Date:</strong> ${selectedDate}</div>
+          <div><strong>🕐 Time:</strong> ${selectedTime}</div>
+        </div>`;
+            const homeBtn = s.querySelector('a.btn');
+            if (homeBtn) {
+              homeBtn.textContent = 'Back to Admin Panel';
+              homeBtn.href = 'admin.html';
+            }
+          }, 300);
+        } catch (err) {
+          showErr(err.message || 'Could not book appointment.');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Booking';
+        }
+        return;
+      }
+
       if (isAdminReschedule) {
         if (!selectedDate) { showErr('Please select a date.'); return; }
         if (!selectedTime) { showErr('Please select a time slot.'); return; }
@@ -1231,7 +1295,7 @@
 
       const sessionUser = JSON.parse(localStorage.getItem('user') || '{}');
       const loggedIn = !!(sessionUser && sessionUser._id && sessionUser.phone);
-      if (!isAdminBlock && !isAdminReschedule && !loggedIn) {
+      if (!isAdminBlock && !isAdminReschedule && !isAdminBook && !loggedIn) {
         sessionStorage.setItem('pendingBooking', JSON.stringify({
           selectedDate,
           selectedTime,
@@ -1396,7 +1460,7 @@
     }
 
     function openLoginModalIfBookQuery() {
-      if (isAdminBlock || isAdminReschedule) return;
+      if (isAdminBlock || isAdminReschedule || isAdminBook) return;
       const params = new URLSearchParams(window.location.search);
       if (params.get('login') !== '1') return;
       const u = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1474,6 +1538,25 @@
 
       const stepLines = document.querySelectorAll('.step-line');
       if (stepLines[1]) stepLines[1].style.display = 'none';
+
+      const adminActions = document.getElementById('adminDayActions');
+      if (adminActions) adminActions.style.display = 'none';
+    }
+
+    if (isAdminBook) {
+      const adminBack = document.getElementById('adminBackBtn');
+      if (adminBack) adminBack.style.display = 'inline-block';
+
+      document.getElementById('bookingTitle').innerText = 'Book for Patient';
+      document.querySelector('.booking-sub').innerText =
+        'Enter the patient\'s name and phone, then pick a date and time.';
+      document.getElementById('submitBtn').innerHTML =
+        '<i class="fas fa-calendar-check"></i> Confirm Booking';
+
+      const sectionTitle = document.querySelector('#patientDetailsSection .form-section-title');
+      if (sectionTitle) {
+        sectionTitle.innerHTML = '<i class="fas fa-user" style="color:var(--teal)"></i> Patient Details';
+      }
 
       const adminActions = document.getElementById('adminDayActions');
       if (adminActions) adminActions.style.display = 'none';

@@ -288,6 +288,111 @@ async function createAppointment({ name, phone, date, time, notes, userId }) {
   }
 }
 
+async function createAppointmentByClinic({ name, phone, date, time, notes }) {
+  if (!name?.trim()) throw Object.assign(new Error('Name is required'), { code: 'VALIDATION' });
+  const phoneStr = String(phone).trim();
+  if (!/^[\d\s+\-]{8,15}$/.test(phoneStr)) {
+    throw Object.assign(new Error('Invalid phone number'), { code: 'VALIDATION' });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw Object.assign(new Error('Invalid date'), { code: 'VALIDATION' });
+  }
+  if (!isValidAppointmentDate(date)) {
+    throw Object.assign(new Error('Cannot book on Sundays or past dates'), { code: 'VALIDATION' });
+  }
+  if (!VALID_SLOTS.includes(time)) {
+    throw Object.assign(new Error('Invalid time slot'), { code: 'VALIDATION' });
+  }
+  if (!futureSlotsForDate(date).includes(time)) {
+    throw Object.assign(new Error('Time slot is no longer available'), { code: 'VALIDATION' });
+  }
+
+  const existing = await Appointment.findOne({ date, time, status: 'confirmed' });
+  if (existing) {
+    throw Object.assign(new Error('SLOT_TAKEN'), { code: 'CONFLICT' });
+  }
+
+  try {
+    const appt = await Appointment.create({
+      name: name.trim().slice(0, 100),
+      phone: phoneStr,
+      date,
+      time,
+      notes: notes ? String(notes).slice(0, 500) : 'Booked by clinic',
+    });
+    return appt;
+  } catch (err) {
+    if (err.code === 11000) {
+      throw Object.assign(new Error('SLOT_TAKEN'), { code: 'CONFLICT' });
+    }
+    throw err;
+  }
+}
+
+async function listUpcomingConfirmedAppointments(limit = 15) {
+  const today = todayYmdIst();
+  if (!today) return [];
+  return Appointment.find({
+    status: 'confirmed',
+    date: { $gte: today },
+  })
+    .sort({ date: 1, time: 1 })
+    .limit(limit)
+    .lean();
+}
+
+async function cancelAppointmentByClinic(appointmentId) {
+  const appt = await Appointment.findById(appointmentId);
+  if (!appt) return { ok: false, reason: 'not_found' };
+  if (appt.status !== 'confirmed') return { ok: false, reason: 'not_confirmed' };
+  appt.status = 'cancelled';
+  await appt.save();
+  const { notifyPatientAppointmentCancelled } = require('./patientNotifications');
+  await notifyPatientAppointmentCancelled(appt);
+  return { ok: true, appt };
+}
+
+async function rescheduleAppointmentByClinic(appointmentId, date, time) {
+  if (!VALID_SLOTS.includes(time)) {
+    throw Object.assign(new Error('Invalid time slot'), { code: 'VALIDATION' });
+  }
+  if (!isValidAppointmentDate(date)) {
+    throw Object.assign(new Error('Invalid date'), { code: 'VALIDATION' });
+  }
+  if (!futureSlotsForDate(date).includes(time)) {
+    throw Object.assign(new Error('Time slot is no longer available'), { code: 'VALIDATION' });
+  }
+  const appt = await Appointment.findById(appointmentId);
+  if (!appt) throw Object.assign(new Error('NOT_FOUND'), { code: 'NOT_FOUND' });
+  if (appt.status !== 'confirmed') {
+    throw Object.assign(new Error('NOT_CONFIRMED'), { code: 'VALIDATION' });
+  }
+  const existing = await Appointment.findOne({
+    date,
+    time,
+    status: 'confirmed',
+    _id: { $ne: appointmentId },
+  }).lean();
+  if (existing) {
+    throw Object.assign(new Error('SLOT_TAKEN'), { code: 'CONFLICT' });
+  }
+  const oldDate = appt.date;
+  const oldTime = appt.time;
+  try {
+    appt.date = date;
+    appt.time = time;
+    await appt.save();
+    const { notifyPatientAppointmentRescheduled } = require('./patientNotifications');
+    await notifyPatientAppointmentRescheduled(appt, oldDate, oldTime);
+    return appt;
+  } catch (err) {
+    if (err.code === 11000) {
+      throw Object.assign(new Error('SLOT_TAKEN'), { code: 'CONFLICT' });
+    }
+    throw err;
+  }
+}
+
 async function setAppointmentStatus(appointmentId, status) {
   const allowed = ['confirmed', 'cancelled', 'completed', 'no-show'];
   if (!allowed.includes(status)) return null;
@@ -323,6 +428,10 @@ module.exports = {
   appointmentUtcMs,
   resolvePatientNameForWa,
   createAppointment,
+  createAppointmentByClinic,
+  listUpcomingConfirmedAppointments,
+  cancelAppointmentByClinic,
+  rescheduleAppointmentByClinic,
   setAppointmentStatus,
   recordReviewRating,
   listUpcomingAppointmentsForWa,

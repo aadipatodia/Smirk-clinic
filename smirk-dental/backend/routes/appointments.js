@@ -18,6 +18,7 @@ const {
 const {
   notifyPatientAppointmentCancelled,
   notifyPatientAppointmentRescheduled,
+  notifyPatientAppointmentConfirmed,
 } = require('../services/patientNotifications');
 const { requireAdmin } = require('../middleware/adminAuth');
 const {
@@ -25,6 +26,7 @@ const {
   isValidAppointmentDate,
   getBookedAndBlockedForDate,
   createAppointment,
+  createAppointmentByClinic,
   phoneDigits,
 } = require('../services/appointmentService');
 
@@ -181,6 +183,73 @@ See you soon 😊
         });
       }
       console.error('[POST /appointments]', err);
+      return res.status(500).json({ success: false, message: 'Server error. Please try again.' });
+    }
+  }
+);
+
+router.post(
+  '/admin',
+  requireAdmin,
+  validate([
+    body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 100 }).withMessage('Name too long'),
+    body('phone')
+      .trim()
+      .notEmpty()
+      .withMessage('Phone is required')
+      .matches(/^[\d\s+\-]{8,15}$/)
+      .withMessage('Invalid phone number'),
+    body('date')
+      .matches(/^\d{4}-\d{2}-\d{2}$/)
+      .withMessage('Date must be YYYY-MM-DD')
+      .custom((d) => {
+        if (!isValidAppointmentDate(d)) throw new Error('Cannot book on Sundays or past dates');
+        return true;
+      }),
+    body('time')
+      .trim()
+      .notEmpty()
+      .withMessage('Time is required')
+      .custom((t) => {
+        if (!VALID_SLOTS.includes(t)) throw new Error('Invalid time slot');
+        return true;
+      }),
+    body('notes').optional().trim().isLength({ max: 500 }).withMessage('Notes too long'),
+  ]),
+  async (req, res) => {
+    const { name, phone, date, time, notes } = req.body;
+
+    try {
+      const appointment = await createAppointmentByClinic({ name, phone, date, time, notes });
+      await notifyPatientAppointmentConfirmed(appointment);
+
+      return res.json({
+        success: true,
+        appointment: {
+          id: appointment._id,
+          name: appointment.name,
+          phone: appointment.phone,
+          date: appointment.date,
+          time: appointment.time,
+        },
+      });
+    } catch (err) {
+      if (err.code === 'CONFLICT' || err.message === 'SLOT_TAKEN') {
+        return res.status(409).json({
+          success: false,
+          message: `The ${time} slot on ${date} is already booked. Please choose a different time.`,
+        });
+      }
+      if (err.code === 'VALIDATION') {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+      if (err.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: 'This slot was just booked. Please choose a different time.',
+        });
+      }
+      console.error('[POST /appointments/admin]', err);
       return res.status(500).json({ success: false, message: 'Server error. Please try again.' });
     }
   }

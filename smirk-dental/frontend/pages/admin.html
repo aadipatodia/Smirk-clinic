@@ -245,6 +245,8 @@
                         Home
                     </a>
 
+                    <button class="btn btn-sm btn-primary" onclick="openBookForPatient()">Book for Patient</button>
+
                     <button class="btn btn-sm btn-outline" onclick="openUnavailable()">Block Slots</button>
 
                     <!-- 🔴 LOGOUT BUTTON -->
@@ -325,6 +327,10 @@
 
         function openUnavailable() {
             window.location.href = "appointment.html?adminBlock=true";
+        }
+
+        function openBookForPatient() {
+            window.location.href = 'appointment.html?adminBook=true';
         }
 
         function logout() {
