@@ -121,11 +121,19 @@ async function addVisitRecord({
   const profile = await PatientProfile.findById(profileId);
   if (!profile) throw Object.assign(new Error('Patient not found'), { code: 'NOT_FOUND' });
 
+  const proc = procedureText?.trim().slice(0, 500);
+  if (!proc || proc.length < 2) {
+    throw Object.assign(new Error('Procedure is required'), { code: 'VALIDATION' });
+  }
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw Object.assign(new Error('Visit date is required'), { code: 'VALIDATION' });
+  }
+
   const record = await PatientVisitRecord.create({
     patientProfileId: profileId,
     date,
-    procedureText: procedureText?.trim().slice(0, 500) || 'General check-up',
-    prescription,
+    procedureText: proc,
+    ...(prescription ? { prescription } : {}),
     createdByWaId,
     geminiConfidence,
   });
@@ -138,33 +146,36 @@ async function addVisitRecord({
   return { profile, record };
 }
 
-async function forwardPrescriptionToPatient(profile, record) {
+async function notifyPatientVisitRecord(profile, record) {
   const patientWa = profile.phone;
   if (!patientWa) return;
 
   const clinic = process.env.CLINIC_NAME || 'Smirk Dental';
   const name = profile.name || 'there';
-  const { storagePath, mimeType, type, filename } = record.prescription;
+  const rx = record.prescription;
 
-  if (!storagePath || !fs.existsSync(storagePath)) {
+  if (!rx?.storagePath || !fs.existsSync(rx.storagePath)) {
     await sendText(
       patientWa,
-      `🦷 ${clinic}\n\nHi ${name},\n\nYour prescription from ${record.date} is ready.\nProcedure: ${record.procedureText}\n\nPlease contact the clinic if you need the file.`
+      `🦷 ${clinic}\n\nHi ${name},\n\nVisit record — ${record.date}\nProcedure: ${record.procedureText}\n\n— Smirk Dental Clinic`
     );
     return;
   }
 
-  const mediaId = await uploadMediaFromFile(storagePath, mimeType || 'application/octet-stream');
+  const mediaId = await uploadMediaFromFile(rx.storagePath, rx.mimeType || 'application/octet-stream');
   const { sendImageByMediaId, sendDocumentByMediaId } = require('./whatsapp/outbound');
 
   const caption = `🦷 ${clinic}\nHi ${name},\n\n📋 Prescription — ${record.date}\nProcedure: ${record.procedureText}`;
 
-  if (type === 'document') {
-    await sendDocumentByMediaId(patientWa, mediaId, filename || path.basename(storagePath), caption);
+  if (rx.type === 'document') {
+    await sendDocumentByMediaId(patientWa, mediaId, rx.filename || path.basename(rx.storagePath), caption);
   } else {
     await sendImageByMediaId(patientWa, mediaId, caption);
   }
 }
+
+/** @deprecated use notifyPatientVisitRecord */
+const forwardPrescriptionToPatient = notifyPatientVisitRecord;
 
 module.exports = {
   findProfileByPhone,
@@ -173,6 +184,7 @@ module.exports = {
   searchPatientsByName,
   getVisitHistory,
   addVisitRecord,
+  notifyPatientVisitRecord,
   forwardPrescriptionToPatient,
   phoneDigits,
 };

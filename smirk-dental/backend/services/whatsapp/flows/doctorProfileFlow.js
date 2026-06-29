@@ -4,10 +4,10 @@ const {
   searchPatientsByName,
   getVisitHistory,
   addVisitRecord,
-  forwardPrescriptionToPatient,
+  notifyPatientVisitRecord,
   phoneDigits,
 } = require('../../patientProfileService');
-const { extractPrescriptionInfo } = require('../../geminiExtract');
+const { parseVisitInput } = require('../../geminiExtract');
 const { downloadAndStoreMedia } = require('../media');
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 const { formatPhoneForAppointment } = require('../../appointmentService');
@@ -23,6 +23,42 @@ function parsePhoneFromText(text) {
   if (d.length === 12 && d.startsWith('91')) return d;
   if (d.length >= 10 && d.length <= 15) return d;
   return null;
+}
+
+function validProcedure(text) {
+  const s = String(text || '').trim();
+  return s.length >= 2 ? s.slice(0, 500) : null;
+}
+
+function validDate(text) {
+  const s = String(text || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+}
+
+function newPendingVisit(mode) {
+  return { mode, procedure: null, date: null, prescription: null };
+}
+
+/** Returns missing mandatory fields for the current visit mode. */
+function missingVisitFields(pending) {
+  if (!pending) return ['procedure', 'date'];
+  const missing = [];
+  if (!validProcedure(pending.procedure)) missing.push('procedure');
+  if (!validDate(pending.date)) missing.push('date');
+  if (pending.mode === 'prescription' && !pending.prescription?.storagePath) {
+    missing.push('prescription');
+  }
+  return missing;
+}
+
+function patientCtxOnly(ctx) {
+  return {
+    profileId: ctx.profileId,
+    profilePhone: ctx.profilePhone,
+    profileName: ctx.profileName,
+    nameSearchQuery: ctx.nameSearchQuery,
+    nameSearchMatches: ctx.nameSearchMatches,
+  };
 }
 
 async function startPatientProfileMenu(waId) {
@@ -78,10 +114,11 @@ async function sendNameSearchResults(waId, query, matches) {
   const sameNameCount = matches.filter(
     (p) => (p.name || '').trim().toLowerCase() === normalizedQuery
   ).length;
-  const duplicateNames = matches.filter((p, i, arr) => {
-    const n = (p.name || '').trim().toLowerCase();
-    return arr.filter((x) => (x.name || '').trim().toLowerCase() === n).length > 1;
-  }).length > 0;
+  const duplicateNames =
+    matches.filter((p, i, arr) => {
+      const n = (p.name || '').trim().toLowerCase();
+      return arr.filter((x) => (x.name || '').trim().toLowerCase() === n).length > 1;
+    }).length > 0;
 
   let header = `Found ${matches.length} patients matching "${query}". Pick the correct one:`;
   if (sameNameCount > 1 || duplicateNames) {
@@ -99,7 +136,7 @@ async function sendNameSearchResults(waId, query, matches) {
 
   await sendListMessage(waId, header, 'Pick patient', rows, 'Search results');
   if (sameNameCount > 1 || duplicateNames) {
-    await sendText(waId, 'Or type the patient\'s phone number (10 digits) to select the correct one.');
+    await sendText(waId, "Or type the patient's phone number (10 digits) to select the correct one.");
   }
   return {
     flow: 'doctor_profile',
@@ -117,7 +154,8 @@ async function showPatientActions(waId, ctx) {
     `${name}\n📞 ${phone}\n\nWhat would you like to do?`,
     'Actions',
     [
-      { id: 'DPF_ADD', title: 'Add prescription', description: 'Photo or PDF' },
+      { id: 'DPF_ADD', title: 'Add prescription', description: 'Photo/PDF + details' },
+      { id: 'DPF_PROC', title: 'Procedure details', description: 'Type procedure & date' },
       { id: 'DPF_HIST', title: 'View history', description: 'Past visits' },
       { id: 'DPF_BACK', title: 'Find another', description: 'Back to search' },
     ],
@@ -126,7 +164,7 @@ async function showPatientActions(waId, ctx) {
   return {
     flow: 'doctor_profile',
     step: 'patient_actions',
-    contextPatch: ctx,
+    contextPatch: patientCtxOnly(ctx),
     lastActionId: 'patient_selected',
   };
 }
@@ -135,12 +173,8 @@ async function showVisitHistory(waId, ctx) {
   const profileId = ctx.profileId;
   if (!profileId) {
     await sendText(waId, 'Session expired. Open Patient profile again.');
-    return doctorMainMenu()(waId).then(() => ({
-      flow: 'idle',
-      step: '0',
-      resetContext: true,
-      lastActionId: 'hist_expired',
-    }));
+    await doctorMainMenu()(waId);
+    return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'hist_expired' };
   }
 
   const visits = await getVisitHistory(profileId, 8);
@@ -151,141 +185,260 @@ async function showVisitHistory(waId, ctx) {
 
   let msg = `📋 Visit history — ${ctx.profileName || 'Patient'}\n\n`;
   visits.forEach((v, i) => {
-    msg += `${i + 1}. ${v.date} — ${v.procedureText}\n`;
+    const rxTag = v.prescription?.storagePath ? ' 📎' : '';
+    msg += `${i + 1}. ${v.date} — ${v.procedureText}${rxTag}\n`;
   });
   await sendText(waId, msg.slice(0, 4000));
   return showPatientActions(waId, ctx);
 }
 
-async function promptPrescriptionUpload(waId, ctx) {
+async function startAddPrescription(waId, ctx) {
   await sendText(
     waId,
-    `Send a photo or PDF of the prescription for ${ctx.profileName || 'this patient'}.\n\nOptional: add a caption with procedure and date.\n\nExample: Root canal, 2026-06-24`
+    [
+      `Add prescription for ${ctx.profileName || 'this patient'}.`,
+      '',
+      'Send everything in one message if you can:',
+      '• Prescription photo or PDF',
+      '• Procedure done (in caption or text)',
+      '• Visit date — any format (e.g. 24/6/26, 24 June 2026)',
+      '',
+      'Only missing details will be asked.',
+    ].join('\n')
   );
   return {
     flow: 'doctor_profile',
-    step: 'upload_prescription',
-    contextPatch: ctx,
+    step: 'collect_visit',
+    contextPatch: { ...patientCtxOnly(ctx), pendingVisit: newPendingVisit('prescription') },
     lastActionId: 'DPF_ADD',
   };
 }
 
-async function processPrescriptionMedia(waId, event, ctx) {
-  const mediaId = event.mediaId;
-  const mimeType = event.mimeType;
-  const caption = event.caption || '';
-  const isDoc = event.kind === 'document';
-  const filename = isDoc ? event.filename : null;
-
-  await sendText(waId, 'Processing prescription…');
-
-  let stored;
-  try {
-    stored = await downloadAndStoreMedia(mediaId, { prefix: `p${ctx.profilePhone || 'rx'}` });
-  } catch (e) {
-    await sendText(waId, `Could not download file: ${e.message}. Try again.`);
-    return promptPrescriptionUpload(waId, ctx);
-  }
-
-  let imageBase64 = null;
-  if (!isDoc && stored.buffer) {
-    imageBase64 = stored.buffer.toString('base64');
-  } else if (isDoc && mimeType === 'application/pdf' && stored.buffer) {
-    imageBase64 = stored.buffer.toString('base64');
-  }
-
-  const extracted = await extractPrescriptionInfo({
-    caption,
-    imageBase64,
-    mimeType: stored.mimeType || mimeType,
-  });
-
-  const pending = {
-    ...ctx,
-    pendingRx: {
-      mediaId,
-      mimeType: stored.mimeType || mimeType,
-      filename: filename || stored.filename,
-      storagePath: stored.storagePath,
-      type: isDoc ? 'document' : 'image',
-      procedure: extracted.procedure,
-      date: extracted.date,
-      confidence: extracted.confidence,
-      caption,
-    },
-  };
-
-  const confNote =
-    extracted.confidence < 0.6 ? '\n\n⚠️ Low confidence — please verify before confirming.' : '';
-
-  await sendReplyButtons(
+async function startProcedureDetails(waId, ctx) {
+  await sendText(
     waId,
     [
-      `Detected for ${ctx.profileName || 'patient'}:`,
+      `Procedure details for ${ctx.profileName || 'this patient'}.`,
       '',
-      `Procedure: ${extracted.procedure}`,
-      `Date: ${extracted.date}`,
-      confNote,
+      'Type procedure and date in one message — e.g.:',
+      '"Root canal, 24 June 2026" or "Scaling done on 24/6/26"',
       '',
-      'Confirm to save and send to patient.',
-    ].join('\n'),
-    [
-      { id: 'DPF_CONFIRM', title: 'Confirm' },
-      { id: 'DPF_EDIT_PROC', title: 'Edit procedure' },
-      { id: 'DPF_EDIT_DATE', title: 'Edit date' },
-    ]
+      'Any date format works. Only missing fields will be asked.',
+    ].join('\n')
   );
-
   return {
     flow: 'doctor_profile',
-    step: 'confirm_extract',
-    contextPatch: pending,
-    lastActionId: 'rx_extracted',
+    step: 'collect_visit',
+    contextPatch: { ...patientCtxOnly(ctx), pendingVisit: newPendingVisit('procedure_only') },
+    lastActionId: 'DPF_PROC',
   };
 }
 
-async function saveAndForwardPrescription(waId, ctx) {
-  const rx = ctx.pendingRx;
-  if (!rx || !ctx.profileId) {
+async function promptMissingFields(waId, ctx, missing) {
+  const labels = missing.map((m) => {
+    if (m === 'prescription') return 'prescription photo/PDF';
+    if (m === 'procedure') return 'procedure';
+    if (m === 'date') return 'visit date';
+    return m;
+  });
+
+  if (missing.length === 1) {
+    if (missing[0] === 'prescription') {
+      await sendText(waId, 'Still needed: prescription photo or PDF. Please send the file.');
+    } else if (missing[0] === 'procedure') {
+      await sendText(waId, 'Still needed: procedure. Type what was done — e.g. Root canal, Scaling.');
+    } else if (missing[0] === 'date') {
+      await sendText(
+        waId,
+        'Still needed: visit date. Type in any format — e.g. 24/6/26, 24 June 2026, yesterday.'
+      );
+    }
+  } else {
+    await sendText(
+      waId,
+      `Still needed: ${labels.join(', ')}.\n\nYou can send them together in one message.`
+    );
+  }
+
+  return {
+    flow: 'doctor_profile',
+    step: 'collect_visit',
+    contextPatch: ctx,
+    lastActionId: 'need_fields',
+  };
+}
+
+/** Merge Gemini parse result + optional prescription file into pending visit. */
+function mergeParsedIntoPending(pendingVisit, parsed, prescriptionFile) {
+  const merged = { ...pendingVisit };
+  if (parsed.procedurePresent && parsed.procedure) {
+    merged.procedure = parsed.procedure;
+  }
+  if (parsed.datePresent && parsed.date) {
+    merged.date = parsed.date;
+  }
+  if (prescriptionFile) {
+    merged.prescription = prescriptionFile;
+  }
+  return merged;
+}
+
+async function handleVisitDoctorInput(waId, ctx, { text, mediaEvent }) {
+  let pendingVisit = ctx.pendingVisit || newPendingVisit('prescription');
+  let prescriptionFile = null;
+  let imageBase64 = null;
+  let mimeType = null;
+  let doctorText = text || '';
+
+  if (mediaEvent) {
+    await sendText(waId, 'Processing…');
+    try {
+      const stored = await downloadAndStoreMedia(mediaEvent.mediaId, {
+        prefix: `p${ctx.profilePhone || 'rx'}`,
+      });
+      const isDoc = mediaEvent.kind === 'document';
+      prescriptionFile = {
+        mediaId: mediaEvent.mediaId,
+        mimeType: stored.mimeType || mediaEvent.mimeType,
+        filename: (isDoc ? mediaEvent.filename : null) || stored.filename,
+        storagePath: stored.storagePath,
+        type: isDoc ? 'document' : 'image',
+      };
+      mimeType = stored.mimeType || mediaEvent.mimeType;
+      if (stored.buffer && (mimeType?.startsWith('image/') || mimeType === 'application/pdf')) {
+        imageBase64 = stored.buffer.toString('base64');
+      }
+      if (mediaEvent.caption) doctorText = mediaEvent.caption;
+    } catch (e) {
+      await sendText(waId, `Could not download file: ${e.message}. Try again.`);
+      return promptMissingFields(waId, ctx, missingVisitFields(pendingVisit));
+    }
+  }
+
+  const hasPrescriptionFile = !!(prescriptionFile?.storagePath || pendingVisit.prescription?.storagePath);
+
+  const parsed = await parseVisitInput({
+    doctorText,
+    imageBase64,
+    mimeType,
+    mode: pendingVisit.mode,
+    hasPrescriptionFile,
+    alreadyHave: {
+      procedure: pendingVisit.procedure,
+      date: pendingVisit.date,
+    },
+  });
+
+  pendingVisit = mergeParsedIntoPending(pendingVisit, parsed, prescriptionFile);
+  const nextCtx = { ...ctx, pendingVisit };
+  const stillMissing = missingVisitFields(pendingVisit);
+
+  if (!stillMissing.length) {
+    const lines = ['Got it:', `• Procedure: ${pendingVisit.procedure}`, `• Date: ${pendingVisit.date}`];
+    if (pendingVisit.mode === 'prescription') lines.push('• Prescription: attached');
+    await sendText(waId, lines.join('\n'));
+    return showVisitConfirm(waId, nextCtx);
+  }
+
+  const got = [];
+  if (parsed.procedurePresent) got.push('procedure');
+  if (parsed.datePresent) got.push('date');
+  if (prescriptionFile) got.push('prescription');
+  if (got.length) {
+    await sendText(waId, `✅ Received: ${got.join(', ')}.`);
+  }
+
+  return promptMissingFields(waId, nextCtx, stillMissing);
+}
+
+async function showVisitConfirm(waId, ctx) {
+  const pv = ctx.pendingVisit;
+  const lines = [
+    `Review for ${ctx.profileName || 'patient'}:`,
+    '',
+    `Procedure: ${pv.procedure}`,
+    `Date: ${pv.date}`,
+  ];
+  if (pv.mode === 'prescription') {
+    lines.push(`Prescription: ${pv.prescription?.filename || 'attached'}`);
+    lines.push('', 'Confirm to save and send to patient.');
+  } else {
+    lines.push('', 'Confirm to save and notify patient.');
+  }
+
+  await sendReplyButtons(waId, lines.join('\n'), [
+    { id: 'DPF_CONFIRM', title: 'Confirm' },
+    { id: 'DPF_EDIT_PROC', title: 'Edit procedure' },
+    { id: 'DPF_EDIT_DATE', title: 'Edit date' },
+  ]);
+
+  return {
+    flow: 'doctor_profile',
+    step: 'confirm_visit',
+    contextPatch: ctx,
+    lastActionId: 'ready_confirm',
+  };
+}
+
+/** Prompt the next missing mandatory field, or show confirm if complete. */
+async function advanceVisitWizard(waId, ctx) {
+  const pv = ctx.pendingVisit;
+  if (!pv) {
+    await sendText(waId, 'Session expired. Start again.');
+    return showPatientActions(waId, patientCtxOnly(ctx));
+  }
+
+  const missing = missingVisitFields(pv);
+  if (!missing.length) return showVisitConfirm(waId, ctx);
+  return promptMissingFields(waId, ctx, missing);
+}
+
+async function saveVisit(waId, ctx) {
+  const pv = ctx.pendingVisit;
+  if (!pv || !ctx.profileId) {
     await sendText(waId, 'Session expired. Start again from Patient profile.');
     await doctorMainMenu()(waId);
     return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'save_expired' };
   }
 
+  const missing = missingVisitFields(pv);
+  if (missing.length) {
+    await sendText(waId, `Still missing: ${missing.join(', ')}.`);
+    return advanceVisitWizard(waId, ctx);
+  }
+
   try {
+    const prescriptionPayload = pv.prescription
+      ? {
+          type: pv.prescription.type,
+          mimeType: pv.prescription.mimeType,
+          filename: pv.prescription.filename,
+          storagePath: pv.prescription.storagePath,
+          waMediaId: pv.prescription.mediaId,
+        }
+      : null;
+
     const { profile, record } = await addVisitRecord({
       profileId: ctx.profileId,
-      date: rx.date,
-      procedureText: rx.procedure,
-      prescription: {
-        type: rx.type,
-        mimeType: rx.mimeType,
-        filename: rx.filename,
-        storagePath: rx.storagePath,
-        waMediaId: rx.mediaId,
-      },
+      date: pv.date,
+      procedureText: pv.procedure,
+      prescription: prescriptionPayload,
       createdByWaId: waId,
-      geminiConfidence: rx.confidence,
     });
 
-    await forwardPrescriptionToPatient(profile, record);
+    await notifyPatientVisitRecord(profile, record);
 
     await sendText(
       waId,
       `✅ Saved and sent to patient.\n\n${profile.name || 'Patient'}\n${record.date} — ${record.procedureText}`
     );
 
-    const nextCtx = {
-      profileId: ctx.profileId,
-      profilePhone: ctx.profilePhone,
-      profileName: ctx.profileName,
-    };
-    return showPatientActions(waId, nextCtx);
+    return showPatientActions(waId, patientCtxOnly(ctx));
   } catch (e) {
     await sendText(waId, `Could not save: ${e.message}`);
     return {
       flow: 'doctor_profile',
-      step: 'confirm_extract',
+      step: 'confirm_visit',
       contextPatch: ctx,
       lastActionId: 'save_fail',
     };
@@ -321,7 +474,15 @@ async function handleDoctorProfileFlow({ waId, event, ctx, session }) {
       await sendText(waId, 'Select a patient first.');
       return startPatientProfileMenu(waId);
     }
-    return promptPrescriptionUpload(waId, ctx);
+    return startAddPrescription(waId, ctx);
+  }
+
+  if (kind === 'list' && id === 'DPF_PROC') {
+    if (!ctx.profileId) {
+      await sendText(waId, 'Select a patient first.');
+      return startPatientProfileMenu(waId);
+    }
+    return startProcedureDetails(waId, ctx);
   }
 
   if (kind === 'list' && id === 'DPF_HIST') {
@@ -329,27 +490,33 @@ async function handleDoctorProfileFlow({ waId, event, ctx, session }) {
   }
 
   if (kind === 'button' && id === 'DPF_CONFIRM') {
-    return saveAndForwardPrescription(waId, ctx);
+    return saveVisit(waId, ctx);
   }
 
   if (kind === 'button' && id === 'DPF_EDIT_PROC') {
-    await sendText(waId, 'Type the procedure name (e.g. Root canal, Scaling):');
+    await sendText(waId, 'Type the procedure (e.g. Root canal, Scaling):');
     return {
       flow: 'doctor_profile',
-      step: 'edit_procedure',
+      step: 'collect_visit',
       contextPatch: ctx,
       lastActionId: 'DPF_EDIT_PROC',
     };
   }
 
   if (kind === 'button' && id === 'DPF_EDIT_DATE') {
-    await sendText(waId, 'Type the visit date as YYYY-MM-DD (e.g. 2026-06-24):');
+    await sendText(waId, 'Type the visit date in any format (e.g. 24/6/26, 24 June 2026):');
     return {
       flow: 'doctor_profile',
-      step: 'edit_date',
+      step: 'collect_visit',
       contextPatch: ctx,
       lastActionId: 'DPF_EDIT_DATE',
     };
+  }
+
+  const visitInputSteps = new Set(['collect_visit', 'upload_prescription', 'enter_procedure', 'enter_date']);
+
+  if (kind === 'text' && visitInputSteps.has(step) && ctx.pendingVisit) {
+    return handleVisitDoctorInput(waId, ctx, { text: event.body });
   }
 
   if (kind === 'text' && step === 'search_phone') {
@@ -420,62 +587,12 @@ async function handleDoctorProfileFlow({ waId, event, ctx, session }) {
     return selectPatientByPhone(waId, phone, match?.name || ctx.nameSearchQuery);
   }
 
-  if (kind === 'text' && step === 'edit_procedure') {
-    const proc = String(event.body || '').trim().slice(0, 500);
-    if (proc.length < 2) {
-      await sendText(waId, 'Procedure too short. Try again.');
-      return { flow: 'doctor_profile', step: 'edit_procedure', contextPatch: ctx, lastActionId: 'bad_proc' };
-    }
-    const pending = { ...ctx.pendingRx, procedure: proc };
-    const nextCtx = { ...ctx, pendingRx: pending };
-    await sendReplyButtons(
-      waId,
-      `Updated:\nProcedure: ${pending.procedure}\nDate: ${pending.date}\n\nConfirm?`,
-      [
-        { id: 'DPF_CONFIRM', title: 'Confirm' },
-        { id: 'DPF_EDIT_PROC', title: 'Edit procedure' },
-        { id: 'DPF_EDIT_DATE', title: 'Edit date' },
-      ]
-    );
-    return {
-      flow: 'doctor_profile',
-      step: 'confirm_extract',
-      contextPatch: nextCtx,
-      lastActionId: 'proc_edited',
-    };
-  }
-
-  if (kind === 'text' && step === 'edit_date') {
-    const d = String(event.body || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-      await sendText(waId, 'Use format YYYY-MM-DD (e.g. 2026-06-24).');
-      return { flow: 'doctor_profile', step: 'edit_date', contextPatch: ctx, lastActionId: 'bad_date' };
-    }
-    const pending = { ...ctx.pendingRx, date: d };
-    const nextCtx = { ...ctx, pendingRx: pending };
-    await sendReplyButtons(
-      waId,
-      `Updated:\nProcedure: ${pending.procedure}\nDate: ${pending.date}\n\nConfirm?`,
-      [
-        { id: 'DPF_CONFIRM', title: 'Confirm' },
-        { id: 'DPF_EDIT_PROC', title: 'Edit procedure' },
-        { id: 'DPF_EDIT_DATE', title: 'Edit date' },
-      ]
-    );
-    return {
-      flow: 'doctor_profile',
-      step: 'confirm_extract',
-      contextPatch: nextCtx,
-      lastActionId: 'date_edited',
-    };
-  }
-
-  if ((kind === 'image' || kind === 'document') && step === 'upload_prescription') {
+  if ((kind === 'image' || kind === 'document') && visitInputSteps.has(step) && ctx.pendingVisit) {
     if (!ctx.profileId) {
       await sendText(waId, 'Select a patient first.');
       return startPatientProfileMenu(waId);
     }
-    return processPrescriptionMedia(waId, event, ctx);
+    return handleVisitDoctorInput(waId, ctx, { mediaEvent: event });
   }
 
   if (kind === 'list' && id === 'DPF_SEARCH') {
@@ -508,7 +625,10 @@ async function handleDoctorProfileFlow({ waId, event, ctx, session }) {
   }
 
   if (kind === 'image' || kind === 'document') {
-    await sendText(waId, 'Open Patient profile → pick a patient → Add prescription, then send the file.');
+    await sendText(
+      waId,
+      'Open Patient profile → pick a patient → Add prescription, then send the file.'
+    );
     return startPatientProfileMenu(waId);
   }
 
