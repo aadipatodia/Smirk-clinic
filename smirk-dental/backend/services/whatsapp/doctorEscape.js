@@ -5,16 +5,10 @@ const DOCTOR_MENU_ESCAPE_EXACT = new Set([
   'menu',
   'main menu',
   'main',
-  'home',
-  'cancel',
-  'stop',
-  'exit',
   'quit',
   'abort',
   'reset',
-  'start over',
   'back to menu',
-  'go back',
   'mainmenu',
 ]);
 

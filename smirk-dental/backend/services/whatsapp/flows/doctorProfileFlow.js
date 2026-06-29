@@ -434,6 +434,7 @@ async function handleVisitDoctorInput(waId, ctx, { text, mediaEvent }) {
     },
   });
 
+  const prevVisit = ctx.pendingVisit || pendingVisit;
   pendingVisit = mergeParsedIntoPending(pendingVisit, parsed, prescriptionFile);
   const nextCtx = { ...ctx, pendingVisit };
   const stillMissing = missingVisitFields(pendingVisit);
@@ -446,9 +447,9 @@ async function handleVisitDoctorInput(waId, ctx, { text, mediaEvent }) {
   }
 
   const got = [];
-  if (parsed.procedurePresent) got.push('procedure');
-  if (parsed.datePresent) got.push('date');
-  if (prescriptionFile) got.push('prescription');
+  if (pendingVisit.procedure && !validProcedure(prevVisit.procedure)) got.push('procedure');
+  if (pendingVisit.date && !validDate(prevVisit.date)) got.push('date');
+  if (prescriptionFile && !prevVisit.prescription?.storagePath) got.push('prescription');
   if (got.length) {
     await sendText(waId, `✅ Received: ${got.join(', ')}.`);
   }

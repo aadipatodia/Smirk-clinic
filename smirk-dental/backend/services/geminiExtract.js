@@ -19,7 +19,7 @@ async function parseVisitInput({
   hasPrescriptionFile = false,
   alreadyHave = {},
 }) {
-  const fallback = parseTextFallback(doctorText, { hasPrescriptionFile, mode });
+  const fallback = parseTextFallback(doctorText);
 
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
   if (!apiKey) {
@@ -45,7 +45,7 @@ async function parseVisitInput({
         '',
         'Fields:',
         '1. procedure — dental procedure done (short phrase). null if not mentioned in this message.',
-        '2. date — visit date normalized to YYYY-MM-DD. Accept ANY format: 24/6/26, 24-06-2026, 24 June 2026, Jun 24 2026, yesterday, today, etc. null if not mentioned.',
+        '2. date — visit date normalized to YYYY-MM-DD. Accept ANY format including without year: "29 june", "24/6/26", "24 June 2026", "yesterday", "today". If year is omitted, assume current year (or previous year if that would be far in the future). null if not mentioned.',
         '',
         'Respond with JSON only, no markdown:',
         '{',
@@ -88,7 +88,7 @@ async function parseVisitInput({
     const parsed = parseJsonFromText(text);
     if (!parsed) return buildVisitParseResult(fallback, { mode, hasPrescriptionFile });
 
-    const merged = {
+    const geminiResult = {
       procedure: parsed.procedurePresent ? sanitizeProcedure(parsed.procedure) : null,
       date: parsed.datePresent ? sanitizeDate(parsed.date) : null,
       procedurePresent: !!parsed.procedurePresent && !!sanitizeProcedure(parsed.procedure),
@@ -96,11 +96,35 @@ async function parseVisitInput({
       confidence: clampConfidence(parsed.confidence),
     };
 
+    const merged = mergeExtractionResults(geminiResult, fallback);
     return buildVisitParseResult(merged, { mode, hasPrescriptionFile });
   } catch (err) {
     console.error('Gemini parseVisitInput failed:', err.response?.data || err.message);
     return buildVisitParseResult(fallback, { mode, hasPrescriptionFile });
   }
+}
+
+function mergeExtractionResults(primary, secondary) {
+  const procedure =
+    primary.procedurePresent && primary.procedure
+      ? primary.procedure
+      : secondary.procedurePresent && secondary.procedure
+        ? secondary.procedure
+        : null;
+  const date =
+    primary.datePresent && primary.date
+      ? primary.date
+      : secondary.datePresent && secondary.date
+        ? secondary.date
+        : null;
+
+  return {
+    procedure,
+    date,
+    procedurePresent: !!procedure,
+    datePresent: !!date,
+    confidence: Math.max(primary.confidence ?? 0, secondary.confidence ?? 0),
+  };
 }
 
 function buildVisitParseResult(extracted, { mode, hasPrescriptionFile }) {
@@ -141,55 +165,99 @@ function sanitizeDate(value) {
   return normalizeDateLoose(s);
 }
 
-/** Best-effort date normalization without Gemini. */
-function normalizeDateLoose(text) {
+function monthNameToNumber(name) {
+  const monthMap = {
+    jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+    may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8,
+    sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11,
+    dec: 12, december: 12,
+  };
+  const key = String(name || '').trim().toLowerCase();
+  return monthMap[key] || monthMap[key.slice(0, 3)] || null;
+}
+
+/** If year omitted, infer from IST today (recent visit — not far in the future). */
+function inferYear(month, day) {
+  const today = todayYmdIst();
+  if (!today) return new Date().getFullYear();
+  const [y, tm, td] = today.split('-').map(Number);
+  let year = y;
+  const candidate = Date.UTC(y, month - 1, day);
+  const todayMs = Date.UTC(y, tm - 1, td);
+  if (candidate > todayMs + 7 * 86400000) year = y - 1;
+  return year;
+}
+
+function ymdFromParts(day, month, year) {
+  if (!month || day < 1 || day > 31) return null;
+  const y = year || inferYear(month, day);
+  return `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/** Find the first date-like substring in free text; returns { date, matchedText }. */
+function findDateInText(text) {
   const s = String(text || '').trim();
   if (!s) return null;
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-
-  const iso = s.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
-  if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
-
-  const dmy = s.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);
-  if (dmy) {
-    let [, d, m, y] = dmy;
-    if (y.length === 2) y = `20${y}`;
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
-
   const months =
-    'jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december';
-  const named = new RegExp(
-    `(\\d{1,2})\\s+(${months})\\s+(\\d{4})|(${months})\\s+(\\d{1,2}),?\\s+(\\d{4})`,
-    'i'
-  );
-  const nm = s.match(named);
-  if (nm) {
-    const monthMap = {
-      jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
-      may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8,
-      sep: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
-    };
-    if (nm[1]) {
-      const mo = monthMap[nm[2].slice(0, 3).toLowerCase()] || monthMap[nm[2].toLowerCase()];
-      if (mo) return `${nm[3]}-${String(mo).padStart(2, '0')}-${nm[1].padStart(2, '0')}`;
-    } else if (nm[4]) {
-      const mo = monthMap[nm[4].slice(0, 3).toLowerCase()] || monthMap[nm[4].toLowerCase()];
-      if (mo) return `${nm[6]}-${String(mo).padStart(2, '0')}-${nm[5].padStart(2, '0')}`;
+    'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec';
+
+  const patterns = [
+    {
+      type: 'day_month',
+      re: new RegExp(`\\b(\\d{1,2})\\s+(${months})(?:\\s+(\\d{4}))?\\b`, 'i'),
+    },
+    {
+      type: 'month_day',
+      re: new RegExp(`\\b(${months})\\s+(\\d{1,2})(?:,?\\s+(\\d{4}))?\\b`, 'i'),
+    },
+    { type: 'iso', re: /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/ },
+    { type: 'dmy', re: /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/ },
+  ];
+
+  for (const { type, re } of patterns) {
+    const m = s.match(re);
+    if (!m) continue;
+
+    let date = null;
+    if (type === 'day_month') {
+      const mo = monthNameToNumber(m[2]);
+      date = ymdFromParts(parseInt(m[1], 10), mo, m[3] ? parseInt(m[3], 10) : null);
+    } else if (type === 'month_day') {
+      const mo = monthNameToNumber(m[1]);
+      date = ymdFromParts(parseInt(m[2], 10), mo, m[3] ? parseInt(m[3], 10) : null);
+    } else if (type === 'iso') {
+      date = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+    } else if (type === 'dmy') {
+      let [, d, mo, y] = m;
+      if (y.length === 2) y = `20${y}`;
+      date = `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return { date, matchedText: m[0] };
     }
   }
 
-  if (/^today$/i.test(s)) return todayYmdIst();
+  if (/^today$/i.test(s)) return { date: todayYmdIst(), matchedText: s };
   if (/^yesterday$/i.test(s)) {
     const t = todayYmdIst();
     if (!t) return null;
     const [y, m, d] = t.split('-').map(Number);
     const dt = new Date(Date.UTC(y, m - 1, d - 1));
-    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+    return {
+      date: `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`,
+      matchedText: s,
+    };
   }
 
   return null;
+}
+
+/** Best-effort date normalization without Gemini. */
+function normalizeDateLoose(text) {
+  const found = findDateInText(text);
+  return found?.date || null;
 }
 
 function clampConfidence(n) {
@@ -198,7 +266,21 @@ function clampConfidence(n) {
   return Math.min(1, Math.max(0, v));
 }
 
-function parseTextFallback(doctorText, { hasPrescriptionFile, mode }) {
+function cleanProcedureText(text, dateMatchedText) {
+  let procText = String(text || '').trim();
+  if (dateMatchedText) {
+    procText = procText.replace(dateMatchedText, ' ');
+  }
+  procText = procText
+    .replace(/\b(done|completed|performed|did)\b/gi, ' ')
+    .replace(/\bon\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[,.\-–—:\s]+|[,.\-–—:\s]+$/g, '')
+    .trim();
+  return procText;
+}
+
+function parseTextFallback(doctorText) {
   const text = String(doctorText || '').trim();
   const result = {
     procedure: null,
@@ -210,36 +292,13 @@ function parseTextFallback(doctorText, { hasPrescriptionFile, mode }) {
 
   if (!text) return result;
 
-  const dateCandidates = [
-    text.match(/\b(\d{4}-\d{2}-\d{2})\b/),
-    text.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/),
-  ];
-
-  let normalizedDate = null;
-  for (const m of dateCandidates) {
-    if (m) {
-      normalizedDate = normalizeDateLoose(m[0]);
-      if (normalizedDate) break;
-    }
-  }
-  if (!normalizedDate) normalizedDate = normalizeDateLoose(text);
-
-  if (normalizedDate) {
-    result.date = normalizedDate;
+  const found = findDateInText(text);
+  if (found?.date) {
+    result.date = found.date;
     result.datePresent = true;
   }
 
-  let procText = text;
-  if (normalizedDate) {
-    procText = procText
-      .replace(/\b\d{4}-\d{2}-\d{2}\b/g, '')
-      .replace(/\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b/g, '')
-      .replace(/\b\d{1,2}\s+\w+\s+\d{4}\b/gi, '')
-      .trim();
-  }
-  procText = procText.replace(/^[,.\-–—:\s]+|[,.\-–—:\s]+$/g, '').trim();
-  procText = procText.replace(/\s+(done\s+)?on\s*$/i, '').trim();
-
+  const procText = cleanProcedureText(text, found?.matchedText);
   if (procText.length >= 2) {
     result.procedure = procText.slice(0, 500);
     result.procedurePresent = true;
@@ -264,4 +323,4 @@ async function extractPrescriptionInfo(opts) {
   };
 }
 
-module.exports = { parseVisitInput, extractPrescriptionInfo, normalizeDateLoose };
+module.exports = { parseVisitInput, extractPrescriptionInfo, normalizeDateLoose, findDateInText };
