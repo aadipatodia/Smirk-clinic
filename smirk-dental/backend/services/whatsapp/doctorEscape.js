@@ -20,10 +20,6 @@ function isDoctorMenuEscape(text) {
   return DOCTOR_MENU_ESCAPE_EXACT.has(t);
 }
 
-function doctorMenuEscapeHint() {
-  return 'Tip: type menu, cancel, or stop anytime to return to the main menu.';
-}
-
 async function returnDoctorToMainMenu(waId) {
   const { sendDoctorMainMenu } = require('./flows/doctorFlow');
   await sendText(waId, '↩️ Back to main menu.');
@@ -33,7 +29,6 @@ async function returnDoctorToMainMenu(waId) {
 
 module.exports = {
   isDoctorMenuEscape,
-  doctorMenuEscapeHint,
   returnDoctorToMainMenu,
   DOCTOR_MENU_ESCAPE_EXACT,
 };

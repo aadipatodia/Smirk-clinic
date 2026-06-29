@@ -9,7 +9,7 @@ const {
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 const { todayYmdIst, addDaysYmdIst } = require('../dateIst');
 const { sendReviewPromptToPatient } = require('../reviewPrompt');
-const { isDoctorMenuEscape, returnDoctorToMainMenu, doctorMenuEscapeHint } = require('../doctorEscape');
+const { isDoctorMenuEscape, returnDoctorToMainMenu } = require('../doctorEscape');
 const {
   startDoctorBook,
   handleDoctorBookFlow,
@@ -24,7 +24,7 @@ const {
 
 function doctorMenuBody() {
   const name = process.env.CLINIC_NAME || 'Smirk Dental';
-  return `👩‍⚕️ Doctor — ${name}\n\nSelect an action:\n${doctorMenuEscapeHint()}`;
+  return `👩‍⚕️ Doctor — ${name}\n\nSelect an action:`;
 }
 
 async function sendDoctorMainMenu(to) {

@@ -15,7 +15,7 @@ const { parseVisitInput } = require('../../geminiExtract');
 const { downloadAndStoreMedia } = require('../media');
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 const { formatPhoneForAppointment } = require('../../appointmentService');
-const { isDoctorMenuEscape, returnDoctorToMainMenu, doctorMenuEscapeHint } = require('../doctorEscape');
+const { isDoctorMenuEscape, returnDoctorToMainMenu } = require('../doctorEscape');
 const fs = require('fs');
 
 function doctorMainMenu() {
@@ -70,7 +70,7 @@ function patientCtxOnly(ctx) {
 async function startPatientProfileMenu(waId) {
   await sendListMessage(
     waId,
-    `Patient profiles — find a patient to add prescriptions or view history.\n\n${doctorMenuEscapeHint()}`,
+    'Patient profiles — find a patient to add prescriptions or view history.',
     'Open',
     [
       { id: 'DPF_SEARCH', title: 'Find by phone', description: 'Enter patient number' },
@@ -307,8 +307,6 @@ async function startAddPrescription(waId, ctx) {
       '• Visit date — any format (e.g. 24/6/26, 24 June 2026)',
       '',
       'Only missing details will be asked.',
-      '',
-      doctorMenuEscapeHint(),
     ].join('\n')
   );
   return {
@@ -327,8 +325,6 @@ async function startProcedureDetails(waId, ctx) {
       '',
       'Type procedure and date in one message — e.g.:',
       '"Root canal, 24 June 2026" or "Scaling done on 24/6/26"',
-      '',
-      doctorMenuEscapeHint(),
     ].join('\n')
   );
   return {
