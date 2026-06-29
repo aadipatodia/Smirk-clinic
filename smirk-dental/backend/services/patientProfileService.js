@@ -110,6 +110,31 @@ async function getVisitHistory(profileId, limit = 10) {
     .lean();
 }
 
+async function getVisitRecordById(recordId, profileId) {
+  return PatientVisitRecord.findOne({ _id: recordId, patientProfileId: profileId }).lean();
+}
+
+async function sendPrescriptionFileToWa(waId, record) {
+  const rx = record.prescription;
+  if (!rx?.storagePath || !fs.existsSync(rx.storagePath)) {
+    throw Object.assign(new Error('Prescription file not found'), { code: 'NOT_FOUND' });
+  }
+
+  const mediaId = await uploadMediaFromFile(rx.storagePath, rx.mimeType || 'application/octet-stream');
+  const { sendImageByMediaId, sendDocumentByMediaId } = require('./whatsapp/outbound');
+  const caption = `${record.date} — ${record.procedureText}`;
+
+  if (rx.type === 'document') {
+    await sendDocumentByMediaId(waId, mediaId, rx.filename || path.basename(rx.storagePath), caption);
+  } else {
+    await sendImageByMediaId(waId, mediaId, caption);
+  }
+}
+
+async function resendVisitToPatient(profile, record) {
+  await notifyPatientVisitRecord(profile, record);
+}
+
 async function addVisitRecord({
   profileId,
   date,
@@ -183,6 +208,9 @@ module.exports = {
   listRecentPatients,
   searchPatientsByName,
   getVisitHistory,
+  getVisitRecordById,
+  sendPrescriptionFileToWa,
+  resendVisitToPatient,
   addVisitRecord,
   notifyPatientVisitRecord,
   forwardPrescriptionToPatient,

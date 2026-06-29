@@ -3,14 +3,20 @@ const {
   listRecentPatients,
   searchPatientsByName,
   getVisitHistory,
+  getVisitRecordById,
+  sendPrescriptionFileToWa,
+  resendVisitToPatient,
   addVisitRecord,
   notifyPatientVisitRecord,
   phoneDigits,
+  findProfileByPhone,
 } = require('../../patientProfileService');
 const { parseVisitInput } = require('../../geminiExtract');
 const { downloadAndStoreMedia } = require('../media');
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 const { formatPhoneForAppointment } = require('../../appointmentService');
+const { isDoctorMenuEscape, returnDoctorToMainMenu, doctorMenuEscapeHint } = require('../doctorEscape');
+const fs = require('fs');
 
 function doctorMainMenu() {
   const { sendDoctorMainMenu } = require('./doctorFlow');
@@ -64,7 +70,7 @@ function patientCtxOnly(ctx) {
 async function startPatientProfileMenu(waId) {
   await sendListMessage(
     waId,
-    'Patient profiles — find a patient to add prescriptions or view history.',
+    `Patient profiles — find a patient to add prescriptions or view history.\n\n${doctorMenuEscapeHint()}`,
     'Open',
     [
       { id: 'DPF_SEARCH', title: 'Find by phone', description: 'Enter patient number' },
@@ -169,27 +175,124 @@ async function showPatientActions(waId, ctx) {
   };
 }
 
-async function showVisitHistory(waId, ctx) {
+async function showVisitHistoryList(waId, ctx) {
   const profileId = ctx.profileId;
   if (!profileId) {
     await sendText(waId, 'Session expired. Open Patient profile again.');
-    await doctorMainMenu()(waId);
-    return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'hist_expired' };
+    return returnDoctorToMainMenu(waId);
   }
 
-  const visits = await getVisitHistory(profileId, 8);
+  const visits = await getVisitHistory(profileId, 10);
   if (!visits.length) {
     await sendText(waId, 'No visit records yet for this patient.');
     return showPatientActions(waId, ctx);
   }
 
-  let msg = `📋 Visit history — ${ctx.profileName || 'Patient'}\n\n`;
-  visits.forEach((v, i) => {
-    const rxTag = v.prescription?.storagePath ? ' 📎' : '';
-    msg += `${i + 1}. ${v.date} — ${v.procedureText}${rxTag}\n`;
-  });
-  await sendText(waId, msg.slice(0, 4000));
-  return showPatientActions(waId, ctx);
+  const rows = visits.map((v) => ({
+    id: `DPF_VISIT:${v._id}`,
+    title: v.date.slice(0, 24),
+    description: `${v.procedureText}${v.prescription?.storagePath ? ' 📎' : ''}`.slice(0, 72),
+  }));
+
+  await sendListMessage(
+    waId,
+    `📋 Past visits — ${ctx.profileName || 'Patient'}\n\nPick a visit to view procedure and prescription:`,
+    'Pick visit',
+    rows,
+    'History'
+  );
+  return {
+    flow: 'doctor_profile',
+    step: 'pick_visit',
+    contextPatch: patientCtxOnly(ctx),
+    lastActionId: 'DPF_HIST',
+  };
+}
+
+async function showVisitDetail(waId, ctx, visitId) {
+  const visit = await getVisitRecordById(visitId, ctx.profileId);
+  if (!visit) {
+    await sendText(waId, 'Visit not found.');
+    return showVisitHistoryList(waId, ctx);
+  }
+
+  const hasRx =
+    visit.prescription?.storagePath && fs.existsSync(visit.prescription.storagePath);
+
+  await sendText(
+    waId,
+    [
+      `📋 ${ctx.profileName || 'Patient'}`,
+      '',
+      `Date: ${visit.date}`,
+      `Procedure: ${visit.procedureText}`,
+      hasRx ? 'Prescription: on file 📎' : 'Prescription: none (procedure only)',
+    ].join('\n')
+  );
+
+  const rows = [];
+  if (hasRx) {
+    rows.push({
+      id: `DPF_RXDOC:${visitId}`,
+      title: 'Send me file',
+      description: 'Prescription on WhatsApp',
+    });
+    rows.push({
+      id: `DPF_RXPAT:${visitId}`,
+      title: 'Resend to patient',
+      description: 'Forward prescription',
+    });
+  }
+  rows.push({ id: 'DPF_HIST_BACK', title: 'Back to history', description: 'All visits' });
+  rows.push({ id: 'DPF_BACK', title: 'Patient actions', description: 'Main patient menu' });
+
+  await sendListMessage(waId, 'What would you like to do?', 'Actions', rows, 'Visit');
+  return {
+    flow: 'doctor_profile',
+    step: 'visit_detail',
+    contextPatch: { ...patientCtxOnly(ctx), selectedVisitId: String(visitId) },
+    lastActionId: 'visit_open',
+  };
+}
+
+async function handleResendPrescriptionToDoctor(waId, ctx, visitId) {
+  const visit = await getVisitRecordById(visitId, ctx.profileId);
+  if (!visit) {
+    await sendText(waId, 'Visit not found.');
+    return showVisitHistoryList(waId, ctx);
+  }
+  try {
+    await sendPrescriptionFileToWa(waId, visit);
+    await sendText(waId, '✅ Prescription sent to you above.');
+  } catch (e) {
+    await sendText(waId, `Could not send file: ${e.message}`);
+  }
+  return showVisitDetail(waId, ctx, visitId);
+}
+
+async function handleResendPrescriptionToPatient(waId, ctx, visitId) {
+  const visit = await getVisitRecordById(visitId, ctx.profileId);
+  if (!visit) {
+    await sendText(waId, 'Visit not found.');
+    return showVisitHistoryList(waId, ctx);
+  }
+  const profile = await findProfileByPhone(ctx.profilePhone);
+  if (!profile) {
+    await sendText(waId, 'Patient profile not found.');
+    return showVisitDetail(waId, ctx, visitId);
+  }
+  try {
+    await resendVisitToPatient(profile, visit);
+    await sendText(waId, `✅ Sent to patient (${ctx.profileName || 'patient'}).`);
+  } catch (e) {
+    await sendText(waId, `Could not send to patient: ${e.message}`);
+  }
+  return showVisitDetail(waId, ctx, visitId);
+}
+
+/** @deprecated use showVisitHistoryList */
+async function showVisitHistory(waId, ctx) {
+  return showVisitHistoryList(waId, ctx);
 }
 
 async function startAddPrescription(waId, ctx) {
@@ -204,6 +307,8 @@ async function startAddPrescription(waId, ctx) {
       '• Visit date — any format (e.g. 24/6/26, 24 June 2026)',
       '',
       'Only missing details will be asked.',
+      '',
+      doctorMenuEscapeHint(),
     ].join('\n')
   );
   return {
@@ -223,7 +328,7 @@ async function startProcedureDetails(waId, ctx) {
       'Type procedure and date in one message — e.g.:',
       '"Root canal, 24 June 2026" or "Scaling done on 24/6/26"',
       '',
-      'Any date format works. Only missing fields will be asked.',
+      doctorMenuEscapeHint(),
     ].join('\n')
   );
   return {
@@ -460,9 +565,12 @@ async function handleDoctorProfileFlow({ waId, event, ctx, session }) {
   const kind = event.kind;
   const id = kind === 'button' ? event.buttonId : kind === 'list' ? event.rowId : '';
 
+  if (kind === 'text' && isDoctorMenuEscape(event.body)) {
+    return returnDoctorToMainMenu(waId);
+  }
+
   if (kind === 'button' && (id === 'D_MENU' || id === 'DPF_CANCEL')) {
-    await doctorMainMenu()(waId);
-    return { flow: 'idle', step: '0', resetContext: true, lastActionId: id };
+    return returnDoctorToMainMenu(waId);
   }
 
   if (kind === 'list' && id === 'DPF_BACK') {
@@ -486,7 +594,26 @@ async function handleDoctorProfileFlow({ waId, event, ctx, session }) {
   }
 
   if (kind === 'list' && id === 'DPF_HIST') {
-    return showVisitHistory(waId, ctx);
+    return showVisitHistoryList(waId, ctx);
+  }
+
+  if (kind === 'list' && id === 'DPF_HIST_BACK') {
+    return showVisitHistoryList(waId, ctx);
+  }
+
+  if (kind === 'list' && id?.startsWith('DPF_VISIT:')) {
+    const visitId = id.slice('DPF_VISIT:'.length);
+    return showVisitDetail(waId, ctx, visitId);
+  }
+
+  if (kind === 'list' && id?.startsWith('DPF_RXDOC:')) {
+    const visitId = id.slice('DPF_RXDOC:'.length);
+    return handleResendPrescriptionToDoctor(waId, ctx, visitId);
+  }
+
+  if (kind === 'list' && id?.startsWith('DPF_RXPAT:')) {
+    const visitId = id.slice('DPF_RXPAT:'.length);
+    return handleResendPrescriptionToPatient(waId, ctx, visitId);
   }
 
   if (kind === 'button' && id === 'DPF_CONFIRM') {

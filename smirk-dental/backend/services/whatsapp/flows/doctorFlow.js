@@ -9,6 +9,7 @@ const {
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 const { todayYmdIst, addDaysYmdIst } = require('../dateIst');
 const { sendReviewPromptToPatient } = require('../reviewPrompt');
+const { isDoctorMenuEscape, returnDoctorToMainMenu, doctorMenuEscapeHint } = require('../doctorEscape');
 const {
   startDoctorBook,
   handleDoctorBookFlow,
@@ -23,7 +24,7 @@ const {
 
 function doctorMenuBody() {
   const name = process.env.CLINIC_NAME || 'Smirk Dental';
-  return `👩‍⚕️ Doctor — ${name}\n\nSelect an action:`;
+  return `👩‍⚕️ Doctor — ${name}\n\nSelect an action:\n${doctorMenuEscapeHint()}`;
 }
 
 async function sendDoctorMainMenu(to) {
@@ -738,6 +739,10 @@ async function handleDoctorListOrButton({ waId, event, session }) {
 async function handleDoctorAction({ waId, event, session }) {
   const ctx = session?.context && typeof session.context === 'object' ? session.context : {};
   const flow = session?.flow || 'idle';
+
+  if (event.kind === 'text' && isDoctorMenuEscape(event.body)) {
+    return returnDoctorToMainMenu(waId);
+  }
 
   if (flow === 'doctor_profile') {
     return handleDoctorProfileFlow({ waId, event, ctx, session });
