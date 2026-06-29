@@ -224,6 +224,57 @@ async function sendTemplate(to, templateName, languageCode, bodyParams = []) {
 /** @deprecated use sendText — kept for routes that still use the old name */
 const sendWhatsAppMessage = sendText;
 
+async function sendImageByMediaId(to, mediaId, caption) {
+  if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
+    console.warn('WhatsApp not configured: skipping sendImageByMediaId');
+    return;
+  }
+  try {
+    const payload = {
+      messaging_product: 'whatsapp',
+      to: normalizeTo(to),
+      type: 'image',
+      image: { id: mediaId },
+    };
+    if (caption) payload.image.caption = String(caption).slice(0, 1024);
+    await postMessagePayload(payload);
+    logBotReply(caption ? `[image] ${caption}` : '[image]');
+  } catch (err) {
+    console.error('❌ WhatsApp sendImageByMediaId error:', {
+      ...botSendContext(),
+      toUser: normalizeTo(to),
+      error: err.response?.data || err.message,
+    });
+  }
+}
+
+async function sendDocumentByMediaId(to, mediaId, filename, caption) {
+  if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
+    console.warn('WhatsApp not configured: skipping sendDocumentByMediaId');
+    return;
+  }
+  try {
+    const payload = {
+      messaging_product: 'whatsapp',
+      to: normalizeTo(to),
+      type: 'document',
+      document: {
+        id: mediaId,
+        ...(filename ? { filename: String(filename).slice(0, 256) } : {}),
+      },
+    };
+    if (caption) payload.document.caption = String(caption).slice(0, 1024);
+    await postMessagePayload(payload);
+    logBotReply(caption ? `[document] ${caption}` : '[document]');
+  } catch (err) {
+    console.error('❌ WhatsApp sendDocumentByMediaId error:', {
+      ...botSendContext(),
+      toUser: normalizeTo(to),
+      error: err.response?.data || err.message,
+    });
+  }
+}
+
 module.exports = {
   sendText,
   sendReplyButtons,
@@ -231,5 +282,7 @@ module.exports = {
   sendCtaUrl,
   sendTemplate,
   sendWhatsAppMessage,
+  sendImageByMediaId,
+  sendDocumentByMediaId,
   normalizeTo,
 };

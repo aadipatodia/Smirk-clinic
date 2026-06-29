@@ -17,3 +17,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Prescription uploads (stored locally)
+backend/uploads/

@@ -16,6 +16,10 @@ const {
   handleDoctorRescheduleFlow,
   sendUpcomingApptPicker,
 } = require('./doctorApptFlow');
+const {
+  startPatientProfileMenu,
+  handleDoctorProfileFlow,
+} = require('./doctorProfileFlow');
 
 function doctorMenuBody() {
   const name = process.env.CLINIC_NAME || 'Smirk Dental';
@@ -34,6 +38,7 @@ async function sendDoctorMainMenu(to) {
       { id: 'D_CNCL', title: 'Cancel appointment', description: 'Cancel a patient visit' },
       { id: 'D_RSV', title: 'Reschedule visit', description: 'Move a patient slot' },
       { id: 'D_MGR', title: 'Mark complete', description: 'Complete / no-show' },
+      { id: 'D_PROF', title: 'Patient profile', description: 'Prescriptions & history' },
       { id: 'D_BLK', title: 'Block availability', description: 'Day or single slot' },
       { id: 'D_UBK', title: 'Unblock availability', description: 'Open day or slot' },
       { id: 'D_MENU', title: 'Refresh this menu', description: 'Show options again' },
@@ -644,6 +649,9 @@ async function handleDoctorListOrButton({ waId, event, session }) {
   if (flow === 'doctor_reschedule') {
     return handleDoctorRescheduleFlow({ waId, event, ctx });
   }
+  if (flow === 'doctor_profile') {
+    return handleDoctorProfileFlow({ waId, event, ctx, session });
+  }
 
   if (kind === 'list') {
     switch (id) {
@@ -661,6 +669,8 @@ async function handleDoctorListOrButton({ waId, event, session }) {
       }
       case 'D_MGR':
         return await sendTodayManageList(waId);
+      case 'D_PROF':
+        return await startPatientProfileMenu(waId);
       case 'D_BOOK':
         return await startDoctorBook(waId);
       case 'D_CNCL':
@@ -717,6 +727,9 @@ async function handleDoctorListOrButton({ waId, event, session }) {
   if (id?.startsWith('DR_')) {
     return handleDoctorRescheduleFlow({ waId, event, ctx });
   }
+  if (id?.startsWith('DPF_') || id === 'DPF_CONFIRM') {
+    return handleDoctorProfileFlow({ waId, event, ctx, session });
+  }
 
   await sendDoctorMainMenu(waId);
   return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'unknown' };
@@ -726,12 +739,22 @@ async function handleDoctorAction({ waId, event, session }) {
   const ctx = session?.context && typeof session.context === 'object' ? session.context : {};
   const flow = session?.flow || 'idle';
 
+  if (flow === 'doctor_profile') {
+    return handleDoctorProfileFlow({ waId, event, ctx, session });
+  }
+
   if (event.kind === 'text') {
     if (flow === 'doctor_book') {
       return handleDoctorBookFlow({ waId, event, ctx, session });
     }
     await sendDoctorMainMenu(waId);
     return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'text_open_menu' };
+  }
+
+  if (event.kind === 'image' || event.kind === 'document') {
+    await sendText(waId, 'Open Patient profile from the menu to upload a prescription.');
+    await sendDoctorMainMenu(waId);
+    return { flow: 'idle', step: '0', resetContext: true, lastActionId: 'media_no_flow' };
   }
 
   if (event.kind === 'list' || event.kind === 'button') {

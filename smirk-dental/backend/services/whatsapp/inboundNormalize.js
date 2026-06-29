@@ -32,6 +32,25 @@ function normalizeInboundMessage(message) {
     return { kind: 'text', body: String(message.text.body).trim() };
   }
 
+  if (message.type === 'image' && message.image?.id) {
+    return {
+      kind: 'image',
+      mediaId: String(message.image.id),
+      mimeType: message.image.mime_type || 'image/jpeg',
+      caption: message.image.caption ? String(message.image.caption).trim() : '',
+    };
+  }
+
+  if (message.type === 'document' && message.document?.id) {
+    return {
+      kind: 'document',
+      mediaId: String(message.document.id),
+      mimeType: message.document.mime_type || 'application/pdf',
+      filename: message.document.filename ? String(message.document.filename) : 'prescription.pdf',
+      caption: message.document.caption ? String(message.document.caption).trim() : '',
+    };
+  }
+
   return { kind: 'unsupported', messageType: message.type };
 }
 
@@ -67,6 +86,10 @@ function describeInboundEvent(event) {
       return event.title
         ? `[list] ${event.title} (${event.rowId})`
         : `[list] ${event.rowId}`;
+    case 'image':
+      return event.caption ? `[image] ${event.caption}` : '[image]';
+    case 'document':
+      return event.caption ? `[document] ${event.caption}` : `[document] ${event.filename || ''}`;
     default:
       return event.messageType ? `[${event.messageType}]` : '(unsupported)';
   }
