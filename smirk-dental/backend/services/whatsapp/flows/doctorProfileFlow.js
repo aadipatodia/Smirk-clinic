@@ -392,7 +392,6 @@ async function handleVisitDoctorInput(waId, ctx, { text, mediaEvent }) {
   let doctorText = text || '';
 
   if (mediaEvent) {
-    await sendText(waId, 'Processing…');
     try {
       const stored = await downloadAndStoreMedia(mediaEvent.mediaId, {
         prefix: `p${ctx.profilePhone || 'rx'}`,
