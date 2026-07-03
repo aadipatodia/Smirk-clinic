@@ -4,6 +4,7 @@ const Appointment = require('../models/Appointment');
 const { phoneDigits } = require('./appointmentService');
 const { sendText, sendTemplate, isServiceWindowError } = require('./whatsapp/outbound');
 const { uploadMediaFromFile } = require('./whatsapp/media');
+const { serializeMedicines, parseMedicinesText } = require('./medicinesFormat');
 const fs = require('fs');
 const path = require('path');
 
@@ -338,7 +339,7 @@ async function findAdminPrescriptionByPhoneAndDate(phone, date) {
     patientName: profile.name || '',
     patientPhone: profile.phone,
     date: record.date,
-    medicines: record.medicinesText || '',
+    medicines: parseMedicinesText(record.medicinesText),
     hasPdf: !!record.prescription?.storagePath,
   };
 }
@@ -359,7 +360,9 @@ async function updateAdminPrescription(recordId, { patientName, patientPhone, me
   await profile.save();
 
   if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) record.date = date;
-  record.medicinesText = medicines.trim().slice(0, 3000);
+  record.medicinesText = Array.isArray(medicines)
+    ? serializeMedicines(medicines).slice(0, 3000)
+    : String(medicines || '').trim().slice(0, 3000);
   record.prescription = prescription;
   await record.save();
 

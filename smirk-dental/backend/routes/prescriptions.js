@@ -2,6 +2,7 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const { requireAdmin } = require('../middleware/adminAuth');
 const { generatePrescriptionPdf } = require('../services/prescriptionPdf');
+const { normalizeMedicinesList, serializeMedicines } = require('../services/medicinesFormat');
 const {
   findOrCreateProfile,
   addVisitRecord,
@@ -30,14 +31,16 @@ const validate = (rules) => [
 const prescriptionFields = [
   body('patientName').trim().isLength({ min: 2, max: 100 }).withMessage('Patient name is required'),
   body('patientPhone').trim().isLength({ min: 10, max: 15 }).withMessage('Valid phone number is required'),
-  body('medicines').trim().isLength({ min: 2, max: 3000 }).withMessage('Medicines are required'),
+  body('medicines').isArray({ min: 1 }).withMessage('Add at least one medicine'),
+  body('medicines.*.name').trim().isLength({ min: 1, max: 200 }).withMessage('Medicine name is required'),
+  body('medicines.*.schedule').optional().trim().isLength({ max: 300 }).withMessage('Schedule is too long'),
   body('date')
     .optional()
     .matches(/^\d{4}-\d{2}-\d{2}$/)
     .withMessage('Date must be YYYY-MM-DD'),
 ];
 
-async function saveAndNotify({ patientName, patientPhone, medicines, date, record, profile, isUpdate }) {
+async function saveAndNotify({ record, profile, isUpdate }) {
   let whatsappSent = false;
   let whatsappError = null;
 
@@ -84,7 +87,7 @@ router.post('/', requireAdmin, validate(prescriptionFields), async (req, res) =>
   try {
     const patientName = req.body.patientName.trim();
     const patientPhone = req.body.patientPhone.trim();
-    const medicines = req.body.medicines.trim();
+    const medicines = normalizeMedicinesList(req.body.medicines);
     const date = req.body.date || new Date().toLocaleDateString('en-CA');
 
     const existing = await findAdminPrescriptionByPhoneAndDate(patientPhone, date);
@@ -104,7 +107,7 @@ router.post('/', requireAdmin, validate(prescriptionFields), async (req, res) =>
       profileId: profile._id,
       date,
       procedureText: 'Prescription',
-      medicinesText: medicines,
+      medicinesText: serializeMedicines(medicines),
       prescription: {
         mediaType: rxFile.mediaType,
         mimeType: rxFile.mimeType,
@@ -114,16 +117,7 @@ router.post('/', requireAdmin, validate(prescriptionFields), async (req, res) =>
       createdByWaId: 'admin',
     });
 
-    const result = await saveAndNotify({
-      patientName,
-      patientPhone,
-      medicines,
-      date,
-      record,
-      profile,
-      isUpdate: false,
-    });
-
+    const result = await saveAndNotify({ record, profile, isUpdate: false });
     return res.json(result);
   } catch (err) {
     console.error('POST /prescriptions error:', err);
@@ -139,7 +133,7 @@ router.put('/:id', requireAdmin, validate(prescriptionFields), async (req, res) 
   try {
     const patientName = req.body.patientName.trim();
     const patientPhone = req.body.patientPhone.trim();
-    const medicines = req.body.medicines.trim();
+    const medicines = normalizeMedicinesList(req.body.medicines);
     const date = req.body.date || new Date().toLocaleDateString('en-CA');
 
     const rxFile = await generatePrescriptionPdf({ patientName, patientPhone, medicines, date });
@@ -157,16 +151,7 @@ router.put('/:id', requireAdmin, validate(prescriptionFields), async (req, res) 
       },
     });
 
-    const result = await saveAndNotify({
-      patientName,
-      patientPhone,
-      medicines,
-      date,
-      record,
-      profile,
-      isUpdate: true,
-    });
-
+    const result = await saveAndNotify({ record, profile, isUpdate: true });
     return res.json(result);
   } catch (err) {
     console.error('PUT /prescriptions/:id error:', err);

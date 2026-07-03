@@ -288,6 +288,79 @@
             resize: vertical;
         }
 
+        .rx-medicines-section {
+            grid-column: 1 / -1;
+        }
+
+        .rx-med-table {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .rx-med-table-header,
+        .rx-med-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 40px;
+            gap: 10px;
+            align-items: center;
+            padding: 10px 12px;
+        }
+
+        .rx-med-table-header {
+            background: #f8fafc;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .rx-med-row {
+            border-bottom: 1px solid #f1f5f9;
+            background: white;
+        }
+
+        .rx-med-row:last-child {
+            border-bottom: none;
+        }
+
+        .rx-med-row input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .rx-med-remove {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 8px;
+            background: #fef2f2;
+            color: #b91c1c;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rx-med-remove:hover {
+            background: #fee2e2;
+        }
+
+        .rx-med-remove:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
         .rx-clinic-preview {
             background: #f8fafc;
             border: 1px dashed #cbd5e1;
@@ -383,6 +456,17 @@
 
             .rx-form-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .rx-med-table-header,
+            .rx-med-row {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+
+            .rx-med-table-header span:last-child,
+            .rx-med-row .rx-med-remove {
+                justify-self: end;
             }
         }
     </style>
@@ -482,7 +566,7 @@
                         <strong>Smirk Dental Clinic &amp; Implant Centre</strong>
                         C6/7, 6096, Ground Floor, Gate 5, C-6<br>
                         Vasant Kunj, New Delhi – 110070<br><br>
-                        <span style="color:#94a3b8;">Signed by Dr. Mehak Gupta · 8130972879</span>
+                        <span style="color:#94a3b8;">Footer: Dr. Mehak Gupta · 8130972879</span>
                     </div>
 
                     <form id="prescriptionForm" onsubmit="submitPrescription(event)">
@@ -500,9 +584,17 @@
                                 <label class="rx-form-label" for="rxDate">Date</label>
                                 <input type="date" id="rxDate" class="rx-form-input" required>
                             </div>
-                            <div class="full-width">
-                                <label class="rx-form-label" for="rxMedicines">Medicines</label>
-                                <textarea id="rxMedicines" class="rx-form-textarea" placeholder="One medicine per line, e.g.&#10;Amoxicillin 500mg — 1 tab twice daily × 5 days&#10;Ibuprofen 400mg — as needed for pain" required maxlength="3000"></textarea>
+                            <div class="rx-medicines-section">
+                                <label class="rx-form-label">Medicines</label>
+                                <div class="rx-med-table">
+                                    <div class="rx-med-table-header">
+                                        <span>Medicine name</span>
+                                        <span>When to take</span>
+                                        <span></span>
+                                    </div>
+                                    <div id="rxMedicineRows"></div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="addMedicineRow()">+ Add medicine</button>
                             </div>
                         </div>
                         <div class="rx-form-actions">
@@ -579,10 +671,64 @@
             document.getElementById('rxRecordId').value = '';
             document.getElementById('rxPatientName').value = '';
             document.getElementById('rxPatientPhone').value = '';
-            document.getElementById('rxMedicines').value = '';
             document.getElementById('rxDate').value = new Date().toLocaleDateString('en-CA');
+            setMedicinesInForm([{ name: '', schedule: '' }]);
             setPrescriptionMode('new');
             showRxStatus('', '');
+        }
+
+        function addMedicineRow(name = '', schedule = '') {
+            const container = document.getElementById('rxMedicineRows');
+            const row = document.createElement('div');
+            row.className = 'rx-med-row';
+            row.innerHTML = `
+                <input type="text" class="rx-med-name" placeholder="e.g. Amoxicillin 500mg" maxlength="200" value="${escAttr(name)}">
+                <input type="text" class="rx-med-schedule" placeholder="e.g. 1 tab twice daily for 5 days" maxlength="300" value="${escAttr(schedule)}">
+                <button type="button" class="rx-med-remove" title="Remove" onclick="removeMedicineRow(this)">×</button>
+            `;
+            container.appendChild(row);
+            updateMedicineRemoveButtons();
+        }
+
+        function escAttr(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;');
+        }
+
+        function removeMedicineRow(btn) {
+            btn.closest('.rx-med-row')?.remove();
+            if (!document.querySelector('#rxMedicineRows .rx-med-row')) {
+                addMedicineRow();
+            }
+            updateMedicineRemoveButtons();
+        }
+
+        function updateMedicineRemoveButtons() {
+            const rows = document.querySelectorAll('#rxMedicineRows .rx-med-row');
+            rows.forEach((row) => {
+                const btn = row.querySelector('.rx-med-remove');
+                if (btn) btn.disabled = rows.length <= 1;
+            });
+        }
+
+        function getMedicinesFromForm() {
+            return [...document.querySelectorAll('#rxMedicineRows .rx-med-row')]
+                .map((row) => ({
+                    name: row.querySelector('.rx-med-name')?.value.trim() || '',
+                    schedule: row.querySelector('.rx-med-schedule')?.value.trim() || '',
+                }))
+                .filter((m) => m.name);
+        }
+
+        function setMedicinesInForm(medicines) {
+            const container = document.getElementById('rxMedicineRows');
+            container.innerHTML = '';
+            const list = Array.isArray(medicines) && medicines.length
+                ? medicines
+                : [{ name: '', schedule: '' }];
+            list.forEach((m) => addMedicineRow(m.name || '', m.schedule || ''));
         }
 
         function setPrescriptionMode(mode) {
@@ -616,11 +762,11 @@
             document.getElementById('rxPatientName').value = name || '';
             document.getElementById('rxPatientPhone').value = phone || '';
             document.getElementById('rxDate').value = date || new Date().toLocaleDateString('en-CA');
-            document.getElementById('rxMedicines').value = '';
+            setMedicinesInForm([{ name: '', schedule: '' }]);
             setPrescriptionMode('new');
 
             if (!phone || !date) {
-                document.getElementById('rxMedicines').focus();
+                document.querySelector('#rxMedicineRows .rx-med-name')?.focus();
                 return;
             }
 
@@ -641,14 +787,14 @@
                     document.getElementById('rxRecordId').value = data.prescription.recordId;
                     document.getElementById('rxPatientName').value = data.prescription.patientName || name || '';
                     document.getElementById('rxPatientPhone').value = data.prescription.patientPhone || phone || '';
-                    document.getElementById('rxMedicines').value = data.prescription.medicines || '';
+                    setMedicinesInForm(data.prescription.medicines || []);
                     setPrescriptionMode('edit');
                 }
             } catch (err) {
                 console.warn('Could not load existing prescription:', err);
             }
 
-            document.getElementById('rxMedicines').focus();
+            document.querySelector('#rxMedicineRows .rx-med-name')?.focus();
         }
 
         function applyPrescriptionPrefill() {
@@ -679,10 +825,18 @@
             btn.textContent = isEdit ? 'Updating…' : 'Sending…';
             showRxStatus('', '');
 
+            const medicines = getMedicinesFromForm();
+            if (!medicines.length) {
+                showRxStatus('error', 'Add at least one medicine with a name.');
+                btn.disabled = false;
+                btn.textContent = isEdit ? 'Update & send to patient' : 'Save & send to patient';
+                return;
+            }
+
             const payload = {
                 patientName: document.getElementById('rxPatientName').value.trim(),
                 patientPhone: document.getElementById('rxPatientPhone').value.trim(),
-                medicines: document.getElementById('rxMedicines').value.trim(),
+                medicines,
                 date: document.getElementById('rxDate').value,
             };
 
@@ -708,6 +862,19 @@
                 if (res.status === 409 && data.recordId) {
                     document.getElementById('rxRecordId').value = data.recordId;
                     setPrescriptionMode('edit');
+                    try {
+                        const lookupParams = new URLSearchParams({
+                            phone: payload.patientPhone,
+                            date: payload.date,
+                        });
+                        const lookupRes = await fetch(`${API}/prescriptions/lookup?${lookupParams}`, {
+                            headers: { 'X-Admin-Password': getAdminPassword() },
+                        });
+                        const lookupData = await lookupRes.json();
+                        if (lookupData.prescription?.medicines) {
+                            setMedicinesInForm(lookupData.prescription.medicines);
+                        }
+                    } catch (_) { /* keep current rows */ }
                     showRxStatus('warning', 'A prescription already exists for this date. Loaded for editing — update and save again.');
                     return;
                 }
