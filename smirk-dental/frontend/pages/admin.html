@@ -450,10 +450,10 @@
             </div>
 
             <div class="admin-filter-row">
-                <button class="btn btn-sm btn-primary" onclick="setActive(this);filterData('all')">All</button>
-                <button class="btn btn-sm btn-secondary" onclick="setActive(this);filterData('today')">Today</button>
-                <button class="btn btn-sm btn-secondary"
-                    onclick="setActive(this);filterData('upcoming')">Upcoming</button>
+                <button class="btn btn-sm btn-primary" id="filterCurrent" onclick="setActive(this);filterData('current')">Today &amp; upcoming</button>
+                <button class="btn btn-sm btn-secondary" id="filterToday" onclick="setActive(this);filterData('today')">Today</button>
+                <button class="btn btn-sm btn-secondary" id="filterUpcoming" onclick="setActive(this);filterData('upcoming')">Upcoming</button>
+                <button class="btn btn-sm btn-outline" id="filterPast" onclick="setActive(this);filterData('past')">Past appointments</button>
             </div>
 
             <div class="admin-card appt-list-scroll">
@@ -738,6 +738,7 @@
         }
 
         let ALL_APPOINTMENTS = [];
+        let CURRENT_FILTER = 'current';
 
         async function loadAppointments() {
             const res = await fetch(`${API}/appointments/all`, {
@@ -756,7 +757,7 @@
             ALL_APPOINTMENTS = data.appointments || [];
 
             updateStats(ALL_APPOINTMENTS);
-            renderAppointments(ALL_APPOINTMENTS);
+            filterData(CURRENT_FILTER, { keepActive: true });
         }
 
         function updateStats(data) {
@@ -789,22 +790,27 @@
             return `<span class="status ${cls}">${esc(labels[s] || s)}</span>`;
         }
 
-        function sortAppointments(list) {
+        function sortAppointments(list, { past = false } = {}) {
             return [...list].sort((a, b) => {
-                if (a.date !== b.date) return a.date.localeCompare(b.date);
+                if (a.date !== b.date) {
+                    return past ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+                }
                 return String(a.time || '').localeCompare(String(b.time || ''));
             });
         }
 
         function renderAppointments(data) {
             const container = document.getElementById('appointmentsList');
-            const rows = sortAppointments(data);
+            const rows = sortAppointments(data, { past: CURRENT_FILTER === 'past' });
 
             if (!rows.length) {
+                const emptyMsg = CURRENT_FILTER === 'past'
+                    ? 'No past appointments'
+                    : 'No appointments found';
                 container.innerHTML = `
             <div class="appt-empty">
                 <div style="font-size:2rem;margin-bottom:10px;">📭</div>
-                <div>No appointments found</div>
+                <div>${emptyMsg}</div>
             </div>
         `;
                 return;
@@ -836,17 +842,32 @@
             }).join('');
         }
 
-        function filterData(type) {
+        function filterData(type, { keepActive } = {}) {
+            CURRENT_FILTER = type;
             const todayStr = new Date().toLocaleDateString('en-CA');
 
             let filtered = [];
 
             if (type === 'today') {
-                filtered = ALL_APPOINTMENTS.filter(a => a.date === todayStr && a.status === 'confirmed');
+                filtered = ALL_APPOINTMENTS.filter(a => a.date === todayStr);
             } else if (type === 'upcoming') {
-                filtered = ALL_APPOINTMENTS.filter(a => a.date > todayStr && a.status === 'confirmed');
+                filtered = ALL_APPOINTMENTS.filter(a => a.date > todayStr);
+            } else if (type === 'past') {
+                filtered = ALL_APPOINTMENTS.filter(a => a.date < todayStr);
             } else {
-                filtered = ALL_APPOINTMENTS;
+                // default: today and future only — no past days
+                filtered = ALL_APPOINTMENTS.filter(a => a.date >= todayStr);
+            }
+
+            if (!keepActive) {
+                const btnMap = {
+                    current: 'filterCurrent',
+                    today: 'filterToday',
+                    upcoming: 'filterUpcoming',
+                    past: 'filterPast',
+                };
+                const btn = document.getElementById(btnMap[type] || 'filterCurrent');
+                if (btn) setActive(btn);
             }
 
             renderAppointments(filtered);
@@ -855,10 +876,17 @@
         function setActive(btn) {
             document.querySelectorAll('.admin-filter-row .btn-sm').forEach(b => {
                 b.classList.remove('btn-primary');
-                b.classList.add('btn-secondary');
+                if (b.id === 'filterPast') {
+                    b.classList.remove('btn-secondary');
+                    b.classList.add('btn-outline');
+                } else {
+                    b.classList.remove('btn-outline');
+                    b.classList.add('btn-secondary');
+                }
             });
 
             btn.classList.remove('btn-secondary');
+            btn.classList.remove('btn-outline');
             btn.classList.add('btn-primary');
         }
 
