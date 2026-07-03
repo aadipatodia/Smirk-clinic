@@ -10,6 +10,7 @@ const {
   rescheduleAppointmentForWa,
   apptBelongsToWa,
 } = require('../../appointmentService');
+const { notifyPatientAppointmentConfirmed } = require('../../patientNotifications');
 const Appointment = require('../../../models/Appointment');
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
 
@@ -258,6 +259,11 @@ async function handleBookingLikeFlow({ waId, event, ctx, mode }) {
         }
         const phone = formatPhoneForAppointment(waId);
         const appt = await createAppointment({ name, phone, date, time, notes: 'WhatsApp' });
+        try {
+          await notifyPatientAppointmentConfirmed(appt);
+        } catch (notifyErr) {
+          console.error('Patient confirm template failed:', notifyErr.message);
+        }
         await sendText(
           waId,
           `✅ Booked!\n\n${appt.date} at ${appt.time}\n\nWe will see you at the clinic.`

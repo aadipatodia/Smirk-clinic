@@ -92,6 +92,7 @@ app.use('/appointments', bookingLimiter);
 app.use('/user', apiLimiter);
 app.use('/intake', apiLimiter);
 app.use('/unavailable', apiLimiter);
+app.use('/prescriptions', apiLimiter);
 app.use('/reviews', apiLimiter);
 
 // ── ROUTES ──
@@ -148,6 +149,9 @@ app.use('/user', userRouter);
 const intakeRouter = require('./routes/intake');
 app.use('/intake', intakeRouter);
 app.use('/appointments', appointmentsRouter);
+
+const prescriptionsRouter = require('./routes/prescriptions');
+app.use('/prescriptions', prescriptionsRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

@@ -30,21 +30,37 @@ async function postMessagePayload(payload) {
   await axios.post(url, payload, { headers: authHeaders() });
 }
 
+async function postMessagePayloadStrict(payload) {
+  try {
+    await postMessagePayload(payload);
+  } catch (err) {
+    const detail = err.response?.data?.error?.message || err.response?.data || err.message;
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
+  }
+}
+
 /**
  * Plain text message (backward compatible with existing callers).
  */
-async function sendText(to, body) {
+async function sendText(to, body, { strict = false } = {}) {
   if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
-    console.warn('WhatsApp not configured: skipping sendText');
+    const msg = 'WhatsApp not configured';
+    if (strict) throw new Error(msg);
+    console.warn(`WhatsApp not configured: skipping sendText`);
     return;
   }
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: normalizeTo(to),
+    type: 'text',
+    text: { body: String(body).slice(0, 4096) },
+  };
   try {
-    await postMessagePayload({
-      messaging_product: 'whatsapp',
-      to: normalizeTo(to),
-      type: 'text',
-      text: { body: String(body).slice(0, 4096) },
-    });
+    if (strict) {
+      await postMessagePayloadStrict(payload);
+    } else {
+      await postMessagePayload(payload);
+    }
     logBotReply(body);
   } catch (err) {
     console.error('❌ WhatsApp sendText error:', {
@@ -52,6 +68,7 @@ async function sendText(to, body) {
       toUser: normalizeTo(to),
       error: err.response?.data || err.message,
     });
+    if (strict) throw err;
   }
 }
 
@@ -183,33 +200,75 @@ async function sendCtaUrl(to, bodyText, displayText, url) {
 }
 
 /**
- * Send an approved template (required for many outbound-initiated messages).
+ * Send an approved template (required for outbound messages outside the 24-hour window).
  * @param {string[]} bodyParams positional {{1}}, {{2}}, ...
+ * @param {{ strict?: boolean, headerText?: string, headerMedia?: { kind: 'image'|'document', mediaId: string, filename?: string }, urlButton?: { index?: number, url: string } }} [options]
  */
-async function sendTemplate(to, templateName, languageCode, bodyParams = []) {
+async function sendTemplate(to, templateName, languageCode, bodyParams = [], options = {}) {
   if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
+    const msg = 'WhatsApp not configured';
+    if (options.strict) throw new Error(msg);
     console.warn('WhatsApp not configured: skipping sendTemplate');
     return;
   }
-  if (!templateName) return;
-  try {
-    const components = [];
-    if (bodyParams.length) {
-      components.push({
-        type: 'body',
-        parameters: bodyParams.map((t) => ({ type: 'text', text: String(t).slice(0, 1024) })),
-      });
-    }
-    await postMessagePayload({
-      messaging_product: 'whatsapp',
-      to: normalizeTo(to),
-      type: 'template',
-      template: {
-        name: String(templateName).slice(0, 512),
-        language: { code: languageCode || 'en' },
-        ...(components.length ? { components } : {}),
-      },
+  if (!templateName) {
+    if (options.strict) throw new Error('WhatsApp template name not configured');
+    return;
+  }
+
+  const components = [];
+  if (options.headerText != null && options.headerText !== '') {
+    components.push({
+      type: 'header',
+      parameters: [{ type: 'text', text: String(options.headerText).slice(0, 60) }],
     });
+  }
+  const header = options.headerMedia;
+  if (header?.mediaId) {
+    const param =
+      header.kind === 'document'
+        ? {
+            type: 'document',
+            document: {
+              id: String(header.mediaId),
+              filename: String(header.filename || 'prescription.pdf').slice(0, 256),
+            },
+          }
+        : { type: 'image', image: { id: String(header.mediaId) } };
+    components.push({ type: 'header', parameters: [param] });
+  }
+  if (bodyParams.length) {
+    components.push({
+      type: 'body',
+      parameters: bodyParams.map((t) => ({ type: 'text', text: String(t).slice(0, 1024) })),
+    });
+  }
+  if (options.urlButton?.url) {
+    components.push({
+      type: 'button',
+      sub_type: 'url',
+      index: String(options.urlButton.index ?? 0),
+      parameters: [{ type: 'text', text: String(options.urlButton.url).slice(0, 2000) }],
+    });
+  }
+
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: normalizeTo(to),
+    type: 'template',
+    template: {
+      name: String(templateName).slice(0, 512),
+      language: { code: languageCode || 'en' },
+      ...(components.length ? { components } : {}),
+    },
+  };
+
+  try {
+    if (options.strict) {
+      await postMessagePayloadStrict(payload);
+    } else {
+      await postMessagePayload(payload);
+    }
     logBotReply(`[template: ${templateName}]`);
   } catch (err) {
     console.error('❌ WhatsApp sendTemplate error:', {
@@ -218,7 +277,23 @@ async function sendTemplate(to, templateName, languageCode, bodyParams = []) {
       templateName,
       error: err.response?.data || err.message,
     });
+    if (options.strict) throw err;
   }
+}
+
+/** True when Meta rejects a free-form message because the 24-hour window closed. */
+function isServiceWindowError(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  const code = err?.response?.data?.error?.code;
+  return (
+    code === 131047 ||
+    code === 131026 ||
+    msg.includes('re-engagement') ||
+    msg.includes('24 hour') ||
+    msg.includes('24-hour') ||
+    msg.includes('outside the allowed window') ||
+    msg.includes('message undeliverable')
+  );
 }
 
 /** @deprecated use sendText — kept for routes that still use the old name */
@@ -226,52 +301,52 @@ const sendWhatsAppMessage = sendText;
 
 async function sendImageByMediaId(to, mediaId, caption) {
   if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
-    console.warn('WhatsApp not configured: skipping sendImageByMediaId');
-    return;
+    throw new Error('WhatsApp not configured');
   }
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: normalizeTo(to),
+    type: 'image',
+    image: { id: mediaId },
+  };
+  if (caption) payload.image.caption = String(caption).slice(0, 1024);
   try {
-    const payload = {
-      messaging_product: 'whatsapp',
-      to: normalizeTo(to),
-      type: 'image',
-      image: { id: mediaId },
-    };
-    if (caption) payload.image.caption = String(caption).slice(0, 1024);
-    await postMessagePayload(payload);
+    await postMessagePayloadStrict(payload);
     logBotReply(caption ? `[image] ${caption}` : '[image]');
   } catch (err) {
     console.error('❌ WhatsApp sendImageByMediaId error:', {
       ...botSendContext(),
       toUser: normalizeTo(to),
-      error: err.response?.data || err.message,
+      error: err.message,
     });
+    throw err;
   }
 }
 
 async function sendDocumentByMediaId(to, mediaId, filename, caption) {
   if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
-    console.warn('WhatsApp not configured: skipping sendDocumentByMediaId');
-    return;
+    throw new Error('WhatsApp not configured');
   }
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: normalizeTo(to),
+    type: 'document',
+    document: {
+      id: mediaId,
+      ...(filename ? { filename: String(filename).slice(0, 256) } : {}),
+    },
+  };
+  if (caption) payload.document.caption = String(caption).slice(0, 1024);
   try {
-    const payload = {
-      messaging_product: 'whatsapp',
-      to: normalizeTo(to),
-      type: 'document',
-      document: {
-        id: mediaId,
-        ...(filename ? { filename: String(filename).slice(0, 256) } : {}),
-      },
-    };
-    if (caption) payload.document.caption = String(caption).slice(0, 1024);
-    await postMessagePayload(payload);
+    await postMessagePayloadStrict(payload);
     logBotReply(caption ? `[document] ${caption}` : '[document]');
   } catch (err) {
     console.error('❌ WhatsApp sendDocumentByMediaId error:', {
       ...botSendContext(),
       toUser: normalizeTo(to),
-      error: err.response?.data || err.message,
+      error: err.message,
     });
+    throw err;
   }
 }
 
@@ -285,4 +360,5 @@ module.exports = {
   sendImageByMediaId,
   sendDocumentByMediaId,
   normalizeTo,
+  isServiceWindowError,
 };

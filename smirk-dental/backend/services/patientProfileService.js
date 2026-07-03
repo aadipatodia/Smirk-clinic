@@ -2,37 +2,188 @@ const PatientProfile = require('../models/PatientProfile');
 const PatientVisitRecord = require('../models/PatientVisitRecord');
 const Appointment = require('../models/Appointment');
 const { phoneDigits } = require('./appointmentService');
-const { todayYmdIst } = require('./whatsapp/dateIst');
-const { sendText } = require('./whatsapp/outbound');
+const { sendText, sendTemplate, isServiceWindowError } = require('./whatsapp/outbound');
 const { uploadMediaFromFile } = require('./whatsapp/media');
 const fs = require('fs');
 const path = require('path');
 
+function normalizeStoredPhone(phone) {
+  const d = phoneDigits(phone);
+  if (!d || d.length < 10) return null;
+  if (d.length === 10 && /^[6-9]/.test(d)) return `91${d}`;
+  if (d.length === 11 && d.startsWith('0')) return `91${d.slice(1)}`;
+  return d;
+}
+
+/** WhatsApp `to` — digits only, with country code (India 10-digit → 91…). */
+function patientWaTo(phone) {
+  return normalizeStoredPhone(phone);
+}
+
+function rxMediaType(rx) {
+  if (!rx) return null;
+  return rx.mediaType || rx.type || null;
+}
+
+async function resolveRxMediaId(rx) {
+  if (rx.storagePath && fs.existsSync(rx.storagePath)) {
+    try {
+      return await uploadMediaFromFile(rx.storagePath, rx.mimeType || 'application/octet-stream');
+    } catch (uploadErr) {
+      console.error('Prescription re-upload failed, trying stored waMediaId:', uploadErr.message || uploadErr);
+      if (rx.waMediaId) return rx.waMediaId;
+      throw uploadErr;
+    }
+  }
+  if (rx.waMediaId) return rx.waMediaId;
+  throw new Error('Prescription file not available to send');
+}
+
+async function deliverPrescriptionMedia(toWa, rx, caption) {
+  const { sendImageByMediaId, sendDocumentByMediaId } = require('./whatsapp/outbound');
+  const isDoc = rxMediaType(rx) === 'document';
+  const mediaId = await resolveRxMediaId(rx);
+
+  if (isDoc) {
+    await sendDocumentByMediaId(toWa, mediaId, rx.filename || 'prescription.pdf', caption);
+  } else {
+    await sendImageByMediaId(toWa, mediaId, caption);
+  }
+}
+
+function templateLang() {
+  return process.env.WHATSAPP_TEMPLATE_LANG || 'en';
+}
+
+function prescriptionTemplateName(rx) {
+  const isDoc = rxMediaType(rx) === 'document';
+  if (isDoc) {
+    return process.env.WHATSAPP_TEMPLATE_PRESCRIPTION_DOC || process.env.WHATSAPP_TEMPLATE_PRESCRIPTION;
+  }
+  return process.env.WHATSAPP_TEMPLATE_PRESCRIPTION;
+}
+
+function visitUpdateTemplateName() {
+  return process.env.WHATSAPP_TEMPLATE_VISIT_UPDATE || null;
+}
+
+function templateSetupHint() {
+  return 'Set WHATSAPP_TEMPLATE_PRESCRIPTION (and WHATSAPP_TEMPLATE_PRESCRIPTION_DOC for PDFs) in .env — create & approve templates in Meta Business Manager.';
+}
+
+/** Body params: patient name, clinic, visit date, procedure. */
+function visitTemplateParams(profile, plainRecord) {
+  const clinic = process.env.CLINIC_NAME || 'Smirk Dental';
+  const name = profile.name || 'there';
+  return [name, clinic, plainRecord.date, plainRecord.procedureText.slice(0, 500)];
+}
+
+async function sendVisitViaTemplate(patientWa, bodyParams, rx) {
+  const lang = templateLang();
+
+  if (rx) {
+    const templateName = prescriptionTemplateName(rx);
+    if (!templateName) {
+      throw Object.assign(new Error(templateSetupHint()), { code: 'TEMPLATE_REQUIRED' });
+    }
+    const mediaId = await resolveRxMediaId(rx);
+    const isDoc = rxMediaType(rx) === 'document';
+    await sendTemplate(patientWa, templateName, lang, bodyParams, {
+      strict: true,
+      headerMedia: {
+        kind: isDoc ? 'document' : 'image',
+        mediaId,
+        filename: rx.filename,
+      },
+    });
+    return;
+  }
+
+  const templateName = visitUpdateTemplateName();
+  if (!templateName) {
+    throw Object.assign(new Error(templateSetupHint()), { code: 'TEMPLATE_REQUIRED' });
+  }
+  await sendTemplate(patientWa, templateName, lang, bodyParams, { strict: true });
+}
+
+async function sendVisitViaSession(patientWa, summary, rx) {
+  await sendText(patientWa, summary, { strict: true });
+  if (rx) {
+    await deliverPrescriptionMedia(patientWa, rx, summary);
+  }
+}
+
+async function notifyPatientVisitRecord(profile, record) {
+  const patientWa = patientWaTo(profile.phone);
+  if (!patientWa) {
+    throw new Error('Patient phone number missing');
+  }
+
+  const plainRecord = record?.toObject ? record.toObject() : record;
+  const rx = plainRecord.prescription;
+  const clinic = process.env.CLINIC_NAME || 'Smirk Dental';
+  const name = profile.name || 'there';
+  const summary = `🦷 ${clinic}\n\nHi ${name},\n\n📋 Prescription — ${plainRecord.date}\nProcedure: ${plainRecord.procedureText}`;
+  const bodyParams = visitTemplateParams(profile, plainRecord);
+
+  const hasTemplate = rx ? !!prescriptionTemplateName(rx) : !!visitUpdateTemplateName();
+
+  // Approved templates work any time — use them when configured.
+  if (hasTemplate) {
+    await sendVisitViaTemplate(patientWa, bodyParams, rx);
+    return;
+  }
+
+  // Fallback: free-form messages (only within Meta's 24-hour window).
+  try {
+    await sendVisitViaSession(patientWa, summary, rx);
+  } catch (err) {
+    if (isServiceWindowError(err)) {
+      throw Object.assign(new Error(`Patient is outside WhatsApp's 24-hour reply window. ${templateSetupHint()}`), {
+        code: 'TEMPLATE_REQUIRED',
+      });
+    }
+    if (rx) {
+      console.error('Prescription media send failed:', err.message || err);
+      throw new Error(`Could not deliver prescription file: ${err.message || 'send failed'}`);
+    }
+    throw err;
+  }
+}
+
 async function findProfileByPhone(phone) {
-  const digits = phoneDigits(phone);
-  if (!digits || digits.length < 10) return null;
-  return PatientProfile.findOne({ phone: digits }).lean();
+  const digits = normalizeStoredPhone(phone);
+  if (!digits) return null;
+  const legacy = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : null;
+  const query = legacy ? { $or: [{ phone: digits }, { phone: legacy }] } : { phone: digits };
+  return PatientProfile.findOne(query).lean();
 }
 
 async function findOrCreateProfile(phone, nameHint) {
-  const digits = phoneDigits(phone);
-  if (!digits || digits.length < 10) {
+  const digits = normalizeStoredPhone(phone);
+  if (!digits) {
     throw Object.assign(new Error('Invalid phone number'), { code: 'VALIDATION' });
   }
 
-  let profile = await PatientProfile.findOne({ phone: digits });
+  const legacy = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : null;
+  let profile = await PatientProfile.findOne(
+    legacy ? { $or: [{ phone: digits }, { phone: legacy }] } : { phone: digits }
+  );
   if (profile) {
+    if (profile.phone !== digits) {
+      profile.phone = digits;
+    }
     if (nameHint?.trim() && !profile.name) {
       profile.name = nameHint.trim().slice(0, 100);
-      await profile.save();
     }
+    await profile.save();
     return profile;
   }
 
   let name = nameHint?.trim() || null;
   if (!name) {
     const recent = await Appointment.find().select('phone name date').sort({ date: -1 }).limit(100).lean();
-    const appt = recent.find((a) => phoneDigits(a.phone) === digits);
+    const appt = recent.find((a) => normalizeStoredPhone(a.phone) === digits);
     name = appt?.name?.trim() || null;
   }
 
@@ -60,8 +211,8 @@ async function listRecentPatients(limit = 10) {
     .lean();
 
   for (const a of completed) {
-    const w = phoneDigits(a.phone);
-    if (!w || w.length < 10 || byPhone[w]) continue;
+    const w = normalizeStoredPhone(a.phone);
+    if (!w || byPhone[w]) continue;
     byPhone[w] = { phone: w, name: a.name?.trim() || 'Patient', profileId: null };
     if (Object.keys(byPhone).length >= cap) break;
   }
@@ -94,8 +245,8 @@ async function searchPatientsByName(query, limit = 10) {
     .lean();
 
   for (const a of appts) {
-    const w = phoneDigits(a.phone);
-    if (!w || w.length < 10 || byPhone[w]) continue;
+    const w = normalizeStoredPhone(a.phone);
+    if (!w || byPhone[w]) continue;
     byPhone[w] = { phone: w, name: a.name?.trim() || 'Patient', profileId: null };
     if (Object.keys(byPhone).length >= cap) break;
   }
@@ -116,19 +267,11 @@ async function getVisitRecordById(recordId, profileId) {
 
 async function sendPrescriptionFileToWa(waId, record) {
   const rx = record.prescription;
-  if (!rx?.storagePath || !fs.existsSync(rx.storagePath)) {
+  if (!rx) {
     throw Object.assign(new Error('Prescription file not found'), { code: 'NOT_FOUND' });
   }
-
-  const mediaId = await uploadMediaFromFile(rx.storagePath, rx.mimeType || 'application/octet-stream');
-  const { sendImageByMediaId, sendDocumentByMediaId } = require('./whatsapp/outbound');
   const caption = `${record.date} — ${record.procedureText}`;
-
-  if (rx.type === 'document') {
-    await sendDocumentByMediaId(waId, mediaId, rx.filename || path.basename(rx.storagePath), caption);
-  } else {
-    await sendImageByMediaId(waId, mediaId, caption);
-  }
+  await deliverPrescriptionMedia(waId, rx, caption);
 }
 
 async function resendVisitToPatient(profile, record) {
@@ -171,34 +314,6 @@ async function addVisitRecord({
   return { profile, record };
 }
 
-async function notifyPatientVisitRecord(profile, record) {
-  const patientWa = profile.phone;
-  if (!patientWa) return;
-
-  const clinic = process.env.CLINIC_NAME || 'Smirk Dental';
-  const name = profile.name || 'there';
-  const rx = record.prescription;
-
-  if (!rx?.storagePath || !fs.existsSync(rx.storagePath)) {
-    await sendText(
-      patientWa,
-      `🦷 ${clinic}\n\nHi ${name},\n\nVisit record — ${record.date}\nProcedure: ${record.procedureText}\n\n— Smirk Dental Clinic`
-    );
-    return;
-  }
-
-  const mediaId = await uploadMediaFromFile(rx.storagePath, rx.mimeType || 'application/octet-stream');
-  const { sendImageByMediaId, sendDocumentByMediaId } = require('./whatsapp/outbound');
-
-  const caption = `🦷 ${clinic}\nHi ${name},\n\n📋 Prescription — ${record.date}\nProcedure: ${record.procedureText}`;
-
-  if (rx.type === 'document') {
-    await sendDocumentByMediaId(patientWa, mediaId, rx.filename || path.basename(rx.storagePath), caption);
-  } else {
-    await sendImageByMediaId(patientWa, mediaId, caption);
-  }
-}
-
 /** @deprecated use notifyPatientVisitRecord */
 const forwardPrescriptionToPatient = notifyPatientVisitRecord;
 
@@ -215,4 +330,6 @@ module.exports = {
   notifyPatientVisitRecord,
   forwardPrescriptionToPatient,
   phoneDigits,
+  patientWaTo,
+  normalizeStoredPhone,
 };

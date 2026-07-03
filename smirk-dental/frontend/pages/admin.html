@@ -196,6 +196,120 @@
             margin-bottom: 15px;
         }
 
+        .admin-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .admin-tabs .btn-tab {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .admin-tabs .btn-tab.active {
+            background: var(--teal, #2aafaa);
+            color: white;
+        }
+
+        .admin-section {
+            display: none;
+        }
+
+        .admin-section.active {
+            display: block;
+        }
+
+        .rx-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .rx-form-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .rx-form-label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .rx-form-input,
+        .rx-form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .rx-form-textarea {
+            min-height: 160px;
+            resize: vertical;
+        }
+
+        .rx-clinic-preview {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-size: 0.85rem;
+            color: #475569;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .rx-clinic-preview strong {
+            display: block;
+            font-size: 1rem;
+            color: #0f2a38;
+            margin-bottom: 4px;
+        }
+
+        .rx-status {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .rx-status.success {
+            display: block;
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .rx-status.warning {
+            display: block;
+            background: #fffbeb;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .rx-status.error {
+            display: block;
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
         @media (max-width: 900px) {
             .admin-container {
                 padding: 16px 14px;
@@ -213,6 +327,10 @@
             }
 
             .admin-stats-row {
+                grid-template-columns: 1fr;
+            }
+
+            .rx-form-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -236,11 +354,10 @@
     <div id="adminPanel" style="display:none">
         <div class="admin-container">
             <div class="admin-header">
-                <h2>🦷 Appointments</h2>
+                <h2 id="adminPageTitle">🦷 Admin</h2>
 
                 <div style="display:flex;gap:10px;align-items:center;">
 
-                    <!-- 🔴 HOME BUTTON -->
                     <a href="../index.html" class="btn btn-sm btn-secondary">
                         Home
                     </a>
@@ -249,7 +366,6 @@
 
                     <button class="btn btn-sm btn-outline" onclick="openUnavailable()">Block Slots</button>
 
-                    <!-- 🔴 LOGOUT BUTTON -->
                     <button class="btn btn-sm btn-primary" onclick="logout()">
                         Logout
                     </button>
@@ -257,6 +373,12 @@
                 </div>
             </div>
 
+            <div class="admin-tabs">
+                <button class="btn-tab active" id="tabAppointments" onclick="switchTab('appointments')">Appointments</button>
+                <button class="btn-tab" id="tabPrescriptions" onclick="switchTab('prescriptions')">Prescriptions</button>
+            </div>
+
+            <div id="sectionAppointments" class="admin-section active">
             <div class="admin-stats-row">
 
                 <div class="admin-card" style="padding:25px;">
@@ -295,6 +417,44 @@
                     </div>
 
                     <div id="appointmentsList"></div>
+                </div>
+            </div>
+            </div>
+
+            <div id="sectionPrescriptions" class="admin-section">
+                <div class="admin-card">
+                    <h3 style="margin:0 0 8px;font-family:var(--font-display,Georgia,serif);color:#0f2a38;">New Prescription</h3>
+                    <p style="margin:0 0 20px;font-size:0.88rem;color:#64748b;">Fill in patient details and medicines. A PDF is generated and sent to the patient on WhatsApp when you save.</p>
+
+                    <div class="rx-clinic-preview">
+                        <strong>Smirk Dental Clinic &amp; Implant Centre</strong>
+                        C6/7, 6096, Ground Floor, Gate 5, C-6<br>
+                        Vasant Kunj, New Delhi – 110070<br><br>
+                        <span style="color:#94a3b8;">Signed by Dr. Mehak Gupta · 8130972879 (fixed on every prescription)</span>
+                    </div>
+
+                    <form id="prescriptionForm" onsubmit="submitPrescription(event)">
+                        <div class="rx-form-grid">
+                            <div>
+                                <label class="rx-form-label" for="rxPatientName">Patient name</label>
+                                <input type="text" id="rxPatientName" class="rx-form-input" placeholder="Full name" required maxlength="100">
+                            </div>
+                            <div>
+                                <label class="rx-form-label" for="rxPatientPhone">Patient phone</label>
+                                <input type="tel" id="rxPatientPhone" class="rx-form-input" placeholder="10-digit mobile" required maxlength="15">
+                            </div>
+                            <div>
+                                <label class="rx-form-label" for="rxDate">Date</label>
+                                <input type="date" id="rxDate" class="rx-form-input" required>
+                            </div>
+                            <div class="full-width">
+                                <label class="rx-form-label" for="rxMedicines">Medicines</label>
+                                <textarea id="rxMedicines" class="rx-form-textarea" placeholder="One medicine per line, e.g.&#10;Amoxicillin 500mg — 1 tab twice daily × 5 days&#10;Ibuprofen 400mg — as needed for pain" required maxlength="3000"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="rxSubmitBtn">Save &amp; send to patient</button>
+                        <div id="rxStatus" class="rx-status"></div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -349,7 +509,96 @@
         function showAdmin() {
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
+            document.getElementById('rxDate').value = new Date().toLocaleDateString('en-CA');
             loadAppointments();
+            applyPrescriptionPrefill();
+            if (new URLSearchParams(location.search).get('tab') === 'prescriptions') {
+                switchTab('prescriptions');
+            }
+        }
+
+        function switchTab(tab) {
+            const isRx = tab === 'prescriptions';
+            document.getElementById('sectionAppointments').classList.toggle('active', !isRx);
+            document.getElementById('sectionPrescriptions').classList.toggle('active', isRx);
+            document.getElementById('tabAppointments').classList.toggle('active', !isRx);
+            document.getElementById('tabPrescriptions').classList.toggle('active', isRx);
+            document.getElementById('adminPageTitle').textContent = isRx ? '📋 Prescriptions' : '🦷 Appointments';
+        }
+
+        function openPrescriptionFor(name, phone, date) {
+            switchTab('prescriptions');
+            document.getElementById('rxPatientName').value = name || '';
+            document.getElementById('rxPatientPhone').value = phone || '';
+            if (date) document.getElementById('rxDate').value = date;
+            document.getElementById('rxMedicines').focus();
+        }
+
+        function applyPrescriptionPrefill() {
+            const params = new URLSearchParams(location.search);
+            const name = params.get('name');
+            const phone = params.get('phone');
+            const date = params.get('date');
+            if (name) document.getElementById('rxPatientName').value = name;
+            if (phone) document.getElementById('rxPatientPhone').value = phone;
+            if (date) document.getElementById('rxDate').value = date;
+        }
+
+        function showRxStatus(type, message) {
+            const el = document.getElementById('rxStatus');
+            el.className = `rx-status ${type}`;
+            el.textContent = message;
+        }
+
+        async function submitPrescription(e) {
+            e.preventDefault();
+            const btn = document.getElementById('rxSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+            showRxStatus('', '');
+
+            const payload = {
+                patientName: document.getElementById('rxPatientName').value.trim(),
+                patientPhone: document.getElementById('rxPatientPhone').value.trim(),
+                medicines: document.getElementById('rxMedicines').value.trim(),
+                date: document.getElementById('rxDate').value,
+            };
+
+            try {
+                const res = await fetch(`${API}/prescriptions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Password': getAdminPassword(),
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (res.status === 401) {
+                    alert('Session expired. Please log in again.');
+                    logout();
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    showRxStatus('error', data.message || 'Could not save prescription.');
+                    return;
+                }
+
+                if (data.whatsappSent) {
+                    showRxStatus('success', data.message);
+                    document.getElementById('rxMedicines').value = '';
+                } else {
+                    showRxStatus('warning', `${data.message}${data.whatsappError ? ' — ' + data.whatsappError : ''}`);
+                }
+            } catch (err) {
+                showRxStatus('error', 'Network error. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save & send to patient';
+            }
         }
 
         let ALL_APPOINTMENTS = [];
@@ -427,12 +676,17 @@
 
             container.innerHTML = rows.map(a => {
                 const id = esc(a._id);
+                const nameJs = JSON.stringify(a.name || '');
+                const phoneJs = JSON.stringify(a.phone || '');
+                const dateJs = JSON.stringify(a.date || '');
+                const rxBtn = `<button class="btn btn-sm btn-outline" onclick='openPrescriptionFor(${nameJs}, ${phoneJs}, ${dateJs})'>Rx</button>`;
                 const actions = a.status === 'confirmed'
                     ? `<div class="appt-actions">
+                ${rxBtn}
                 <button class="btn btn-sm btn-secondary" onclick="reschedule('${id}')">Reschedule</button>
                 <button class="btn btn-sm btn-primary" onclick="cancel('${id}')">Cancel</button>
                </div>`
-                    : '<span style="color:#94a3b8;font-size:0.82rem">—</span>';
+                    : `<div class="appt-actions">${rxBtn}</div>`;
 
                 return `
         <div class="appt-row data">

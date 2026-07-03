@@ -1,49 +1,27 @@
 const Appointment = require('../models/Appointment');
 const { appointmentUtcMs } = require('./appointmentService');
-const { sendText, sendTemplate } = require('./whatsapp/outbound');
+const { sendAppointmentReminderTemplate } = require('./whatsapp/appointmentReminderSend');
+const { APPOINTMENT_REMINDER } = require('./whatsapp/templates');
 
 const WINDOW_MS = 12 * 60 * 1000;
 
-function cleanPhone(phone) {
-  return String(phone || '').replace(/\D/g, '');
-}
-
 async function send24hReminder(appt) {
-  const to = cleanPhone(appt.phone);
-  if (!to) return;
-  const name = process.env.WHATSAPP_TEMPLATE_REMINDER_24H;
-  if (name) {
-    await sendTemplate(to, name, process.env.WHATSAPP_TEMPLATE_LANG || 'en', [
-      appt.name || 'there',
-      appt.date,
-      appt.time,
-      process.env.CLINIC_NAME || 'Smirk Dental',
-    ]);
-  } else {
-    await sendText(
-      to,
-      `🦷 ${process.env.CLINIC_NAME || 'Smirk Dental'}\n\nHi ${appt.name},\n\nReminder: you have an appointment tomorrow (${appt.date}) at ${appt.time}.\n\nSee you soon!`
-    );
-  }
+  await sendAppointmentReminderTemplate(appt.phone, {
+    headerText: APPOINTMENT_REMINDER.header24h,
+    name: appt.name,
+    date: appt.date,
+    time: appt.time,
+  });
   await Appointment.updateOne({ _id: appt._id }, { $set: { reminder24hSent: true } });
 }
 
 async function send1hReminder(appt) {
-  const to = cleanPhone(appt.phone);
-  if (!to) return;
-  const name = process.env.WHATSAPP_TEMPLATE_REMINDER_1H;
-  if (name) {
-    await sendTemplate(to, name, process.env.WHATSAPP_TEMPLATE_LANG || 'en', [
-      appt.name || 'there',
-      appt.time,
-      process.env.CLINIC_NAME || 'Smirk Dental',
-    ]);
-  } else {
-    await sendText(
-      to,
-      `🦷 ${process.env.CLINIC_NAME || 'Smirk Dental'}\n\nHi ${appt.name},\n\nYour appointment is in about 1 hour (${appt.time} today).\n\nSee you soon!`
-    );
-  }
+  await sendAppointmentReminderTemplate(appt.phone, {
+    headerText: APPOINTMENT_REMINDER.header1h,
+    name: appt.name,
+    date: appt.date,
+    time: appt.time,
+  });
   await Appointment.updateOne({ _id: appt._id }, { $set: { reminder1hSent: true } });
 }
 
@@ -69,7 +47,7 @@ async function runAppointmentReminders() {
         try {
           await send24hReminder(a);
         } catch (e) {
-          console.error('24h reminder failed', e.message);
+          console.error('24h reminder failed', a.phone, e.message);
         }
       }
     }
@@ -80,7 +58,7 @@ async function runAppointmentReminders() {
         try {
           await send1hReminder(a);
         } catch (e) {
-          console.error('1h reminder failed', e.message);
+          console.error('1h reminder failed', a.phone, e.message);
         }
       }
     }

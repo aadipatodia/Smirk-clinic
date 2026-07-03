@@ -21,7 +21,7 @@ const patientVisitRecordSchema = new mongoose.Schema(
       required: true,
     },
     prescription: {
-      type: {
+      mediaType: {
         type: String,
         enum: ['image', 'document'],
       },

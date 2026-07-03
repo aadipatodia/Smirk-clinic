@@ -2,7 +2,8 @@ const Appointment = require('../models/Appointment');
 const OutreachLog = require('../models/OutreachLog');
 const { todayYmdIst, isAnniversaryDay, monthsSinceVisit } = require('./whatsapp/dateIst');
 const { phoneDigits } = require('./appointmentService');
-const { sendText, sendTemplate } = require('./whatsapp/outbound');
+const { sendAppointmentReminderTemplate } = require('./whatsapp/appointmentReminderSend');
+const { APPOINTMENT_REMINDER } = require('./whatsapp/templates');
 
 const REMINDER_KINDS = [
   {
@@ -10,27 +11,20 @@ const REMINDER_KINDS = [
     minMonths: 1,
     intervalMonths: 1,
     label: 'monthly',
-    templateEnv: 'WHATSAPP_TEMPLATE_CHECKUP_MONTHLY',
   },
   {
     kind: 'checkup_quarterly',
     minMonths: 3,
     intervalMonths: 3,
     label: 'quarterly (3-month)',
-    templateEnv: 'WHATSAPP_TEMPLATE_CHECKUP_QUARTERLY',
   },
   {
     kind: 'checkup_6month',
     minMonths: 6,
     intervalMonths: 6,
     label: '6-month',
-    templateEnv: 'WHATSAPP_TEMPLATE_CHECKUP_6MONTH',
   },
 ];
-
-function clinicLabel() {
-  return process.env.CLINIC_NAME || 'Smirk Dental';
-}
 
 async function hasFutureConfirmedForWa(waDigits) {
   const today = todayYmdIst();
@@ -46,34 +40,20 @@ async function alreadySent(waId, kind, periodKey) {
   return !!existing;
 }
 
-function buildCombinedMessage(dueConfigs, { name, lastDate }) {
-  const clinic = process.env.CLINIC_NAME || 'Smirk Dental';
-  const lines = dueConfigs.map((c) => `• ${c.label.charAt(0).toUpperCase() + c.label.slice(1)} check-up`);
-  return [
-    `🦷 ${clinic}`,
-    '',
-    `Hi ${name},`,
-    '',
-    'Your dental check-up is due today:',
-    ...lines,
-    '',
-    `Last visit: ${lastDate}`,
-    '',
-    'Message us here or tap Book visit to schedule when it suits you.',
-  ].join('\n');
+function checkupHeaderForKind(kind) {
+  return APPOINTMENT_REMINDER.headerCheckup[kind] || 'check-up';
 }
 
-async function sendCheckupReminder(waId, dueConfigs, { name, lastDate }) {
-  const tpl = process.env.WHATSAPP_TEMPLATE_CHECKUP;
-  if (tpl && dueConfigs.length === 1) {
-    const cfg = dueConfigs[0];
-    const specificTpl = process.env[cfg.templateEnv];
-    if (specificTpl) {
-      await sendTemplate(waId, specificTpl, process.env.WHATSAPP_TEMPLATE_LANG || 'en', [name, lastDate, clinicLabel()]);
-      return;
-    }
+/** One template message per check-up type (monthly / quarterly / 6-month). */
+async function sendCheckupReminder(waId, dueConfigs, { name, dueDate }) {
+  for (const cfg of dueConfigs) {
+    await sendAppointmentReminderTemplate(waId, {
+      headerText: checkupHeaderForKind(cfg.kind),
+      name,
+      date: dueDate,
+      time: APPOINTMENT_REMINDER.checkupTimePlaceholder,
+    });
   }
-  await sendText(waId, buildCombinedMessage(dueConfigs, { name, lastDate }));
 }
 
 function isDueForInterval(months, cfg) {
@@ -83,7 +63,6 @@ function isDueForInterval(months, cfg) {
 /**
  * Daily job (9:00 IST): patients whose last *completed* visit anniversary falls today
  * receive monthly, quarterly, and/or 6-month check-up reminders on WhatsApp.
- * Example: last visit 2026-06-24 → monthly on every 24th, quarterly on 24th every 3 months, etc.
  */
 async function runCheckupReminders() {
   const today = todayYmdIst();
@@ -102,7 +81,8 @@ async function runCheckupReminders() {
     }
   }
 
-  for (const [waId, { date: lastDate, name }] of Object.entries(lastByWa)) {
+  for (const [waId, { name }] of Object.entries(lastByWa)) {
+    const lastDate = lastByWa[waId].date;
     if (!isAnniversaryDay(lastDate, today)) continue;
     if (await hasFutureConfirmedForWa(waId)) continue;
 
@@ -118,7 +98,7 @@ async function runCheckupReminders() {
     if (!unsent.length) continue;
 
     try {
-      await sendCheckupReminder(waId, unsent, { name, lastDate });
+      await sendCheckupReminder(waId, unsent, { name, dueDate: today });
       for (const cfg of unsent) {
         await OutreachLog.create({ waId, kind: cfg.kind, periodKey });
       }

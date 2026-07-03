@@ -1,34 +1,52 @@
 const Appointment = require('../../models/Appointment');
 const { getGoogleReviewUrl } = require('../googleReviewUrl');
-const { sendCtaUrl } = require('./outbound');
+const { sendTemplate } = require('./outbound');
+const { REVIEW_REQUEST } = require('./templates');
+
+function patientWaTo(phone) {
+  const d = String(phone || '').replace(/\D/g, '');
+  if (!d || d.length < 10) return null;
+  if (d.length === 10 && /^[6-9]/.test(d)) return `91${d}`;
+  if (d.length === 11 && d.startsWith('0')) return `91${d.slice(1)}`;
+  return d;
+}
+
+/** YYYY-MM-DD → "Jan 1, 2025" for template display */
+function formatVisitDate(ymd) {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd || '';
+  const [y, m, d] = ymd.split('-').map(Number);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[m - 1]} ${d}, ${y}`;
+}
 
 /**
- * Ask patient to leave a Google review after their visit.
+ * Ask patient to leave a Google review after their visit (approved template).
  */
 async function sendReviewPromptToPatient(appointment) {
   if (!appointment?.phone) return;
-  const clean = String(appointment.phone).replace(/\D/g, '');
-  if (!clean) return;
+  const to = patientWaTo(appointment.phone);
+  if (!to) return;
 
-  const clinic = process.env.CLINIC_NAME || 'Smirk Dental';
   const reviewUrl = getGoogleReviewUrl();
-  const body = [
-    `Thank you for visiting ${clinic}! 😊`,
-    '',
-    'We hope you had a great experience. Would you take a moment to leave us a Google review?',
-    '',
-    reviewUrl,
-  ].join('\n');
+  if (!reviewUrl) {
+    console.error('sendReviewPromptToPatient: review URL not configured');
+    return;
+  }
+
+  const name = appointment.name?.trim() || 'there';
+  const visitDate = formatVisitDate(appointment.date);
+  const tpl = REVIEW_REQUEST;
 
   try {
-    await sendCtaUrl(clean, body, 'Rate on Google', reviewUrl);
-    await Appointment.updateOne(
-      { _id: appointment._id },
-      { $set: { reviewRequestSent: true } }
-    );
+    await sendTemplate(to, tpl.name, tpl.language, [name, visitDate], {
+      strict: true,
+      urlButton: { index: tpl.buttonIndex, url: reviewUrl },
+    });
+    await Appointment.updateOne({ _id: appointment._id }, { $set: { reviewRequestSent: true } });
   } catch (e) {
     console.error('sendReviewPromptToPatient:', e.message);
+    throw e;
   }
 }
 
-module.exports = { sendReviewPromptToPatient };
+module.exports = { sendReviewPromptToPatient, formatVisitDate };

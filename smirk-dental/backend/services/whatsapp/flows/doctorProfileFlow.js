@@ -9,6 +9,7 @@ const {
   addVisitRecord,
   notifyPatientVisitRecord,
   phoneDigits,
+  patientWaTo,
   findProfileByPhone,
 } = require('../../patientProfileService');
 const { parseVisitInput } = require('../../geminiExtract');
@@ -402,7 +403,7 @@ async function handleVisitDoctorInput(waId, ctx, { text, mediaEvent }) {
         mimeType: stored.mimeType || mediaEvent.mimeType,
         filename: (isDoc ? mediaEvent.filename : null) || stored.filename,
         storagePath: stored.storagePath,
-        type: isDoc ? 'document' : 'image',
+        mediaType: isDoc ? 'document' : 'image',
       };
       mimeType = stored.mimeType || mediaEvent.mimeType;
       if (stored.buffer && (mimeType?.startsWith('image/') || mimeType === 'application/pdf')) {
@@ -511,7 +512,7 @@ async function saveVisit(waId, ctx) {
   try {
     const prescriptionPayload = pv.prescription
       ? {
-          type: pv.prescription.type,
+          mediaType: pv.prescription.mediaType || pv.prescription.type,
           mimeType: pv.prescription.mimeType,
           filename: pv.prescription.filename,
           storagePath: pv.prescription.storagePath,
@@ -527,12 +528,19 @@ async function saveVisit(waId, ctx) {
       createdByWaId: waId,
     });
 
-    await notifyPatientVisitRecord(profile, record);
-
-    await sendText(
-      waId,
-      `✅ Saved and sent to patient.\n\n${profile.name || 'Patient'}\n${record.date} — ${record.procedureText}`
-    );
+    try {
+      await notifyPatientVisitRecord(profile, record);
+      await sendText(
+        waId,
+        `✅ Saved and sent to patient.\n\n${profile.name || 'Patient'}\n📞 ${patientWaTo(profile.phone) || profile.phone}\n${record.date} — ${record.procedureText}`
+      );
+    } catch (notifyErr) {
+      console.error('Patient notify failed:', notifyErr.message || notifyErr);
+      await sendText(
+        waId,
+        `⚠️ Saved to profile but could not reach patient on WhatsApp:\n${notifyErr.message}\n\nTry View history → Resend to patient.`
+      );
+    }
 
     return showPatientActions(waId, patientCtxOnly(ctx));
   } catch (e) {
