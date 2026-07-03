@@ -317,22 +317,7 @@ async function addVisitRecord({
   return { profile, record };
 }
 
-/** Admin prescription for a patient on a given visit date (if any). */
-async function findAdminPrescriptionByPhoneAndDate(phone, date) {
-  const profile = await findProfileByPhone(phone);
-  if (!profile) return null;
-
-  const record = await PatientVisitRecord.findOne({
-    patientProfileId: profile._id,
-    date,
-    createdByWaId: 'admin',
-    'prescription.storagePath': { $exists: true },
-  })
-    .sort({ updatedAt: -1 })
-    .lean();
-
-  if (!record) return null;
-
+function formatAdminPrescription(profile, record) {
   return {
     recordId: String(record._id),
     profileId: String(profile._id),
@@ -342,6 +327,98 @@ async function findAdminPrescriptionByPhoneAndDate(phone, date) {
     medicines: parseMedicinesText(record.medicinesText),
     hasPdf: !!record.prescription?.storagePath,
   };
+}
+
+/** Admin prescription for a patient on a given visit date (if any). */
+async function findAdminPrescriptionByPhoneAndDate(phone, date) {
+  const profile = await findProfileByPhone(phone);
+  if (!profile) return null;
+
+  const record = await PatientVisitRecord.findOne({
+    patientProfileId: profile._id,
+    date,
+    createdByWaId: 'admin',
+    'prescription.storagePath': { $exists: true, $ne: '' },
+  })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  if (!record) return null;
+
+  return formatAdminPrescription(profile, record);
+}
+
+async function getAdminPrescriptionById(recordId) {
+  const record = await PatientVisitRecord.findById(recordId).lean();
+  if (!record || record.createdByWaId !== 'admin' || !record.prescription?.storagePath) {
+    return null;
+  }
+
+  const profile = await PatientProfile.findById(record.patientProfileId).lean();
+  if (!profile) return null;
+
+  return formatAdminPrescription(profile, record);
+}
+
+/** Attach prescriptionRecordId to each appointment when an admin rx exists for that phone+date. */
+async function attachPrescriptionRecordIds(appointments) {
+  if (!Array.isArray(appointments) || !appointments.length) return appointments;
+
+  const phoneSet = new Set();
+  for (const appt of appointments) {
+    const digits = normalizeStoredPhone(appt.phone);
+    if (digits) phoneSet.add(digits);
+  }
+  if (!phoneSet.size) return appointments;
+
+  const phones = [...phoneSet];
+  const legacyPhones = phones
+    .filter((p) => p.length === 12 && p.startsWith('91'))
+    .map((p) => p.slice(2));
+  const profileQuery = legacyPhones.length
+    ? { $or: [{ phone: { $in: phones } }, { phone: { $in: legacyPhones } }] }
+    : { phone: { $in: phones } };
+
+  const profiles = await PatientProfile.find(profileQuery).lean();
+  if (!profiles.length) return appointments;
+
+  const profileByPhone = {};
+  for (const profile of profiles) {
+    profileByPhone[profile.phone] = profile;
+    if (profile.phone.length === 12 && profile.phone.startsWith('91')) {
+      profileByPhone[profile.phone.slice(2)] = profile;
+    }
+  }
+
+  const profileIds = profiles.map((p) => p._id);
+  const dates = [...new Set(appointments.map((a) => a.date).filter(Boolean))];
+
+  const records = await PatientVisitRecord.find({
+    patientProfileId: { $in: profileIds },
+    date: { $in: dates },
+    createdByWaId: 'admin',
+    'prescription.storagePath': { $exists: true, $ne: '' },
+  })
+    .select('_id patientProfileId date updatedAt')
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  const recordByProfileDate = {};
+  for (const record of records) {
+    const key = `${record.patientProfileId}_${record.date}`;
+    if (!recordByProfileDate[key]) {
+      recordByProfileDate[key] = String(record._id);
+    }
+  }
+
+  return appointments.map((appt) => {
+    const digits = normalizeStoredPhone(appt.phone);
+    const profile = digits ? profileByPhone[digits] : null;
+    const prescriptionRecordId = profile
+      ? recordByProfileDate[`${profile._id}_${appt.date}`] || null
+      : null;
+    return { ...appt, prescriptionRecordId };
+  });
 }
 
 async function updateAdminPrescription(recordId, { patientName, patientPhone, medicines, date, prescription }) {
@@ -390,6 +467,8 @@ module.exports = {
   notifyPatientVisitRecord,
   forwardPrescriptionToPatient,
   findAdminPrescriptionByPhoneAndDate,
+  getAdminPrescriptionById,
+  attachPrescriptionRecordIds,
   updateAdminPrescription,
   phoneDigits,
   patientWaTo,

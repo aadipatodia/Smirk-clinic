@@ -21,6 +21,7 @@ const {
   notifyPatientAppointmentConfirmed,
 } = require('../services/patientNotifications');
 const { requireAdmin } = require('../middleware/adminAuth');
+const { attachPrescriptionRecordIds } = require('../services/patientProfileService');
 const {
   VALID_SLOTS,
   isValidAppointmentDate,
@@ -257,7 +258,8 @@ router.post(
 
 router.get('/all', requireAdmin, async (req, res) => {
   try {
-    const appointments = await Appointment.find().sort({ date: 1, time: 1 }).lean();
+    const rows = await Appointment.find().sort({ date: 1, time: 1 }).lean();
+    const appointments = await attachPrescriptionRecordIds(rows);
 
     res.json({
       success: true,

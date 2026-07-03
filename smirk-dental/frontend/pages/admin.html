@@ -212,6 +212,30 @@
             flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .admin-search-wrap {
+            flex: 1 1 220px;
+            min-width: 180px;
+            max-width: 320px;
+            margin-left: auto;
+        }
+
+        .admin-search-input {
+            width: 100%;
+            padding: 0.55rem 0.85rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            background: white;
+            color: #0f2a38;
+        }
+
+        .admin-search-input:focus {
+            outline: none;
+            border-color: #2aafaa;
+            box-shadow: 0 0 0 3px rgba(42, 175, 170, 0.15);
         }
 
         .admin-tabs {
@@ -408,6 +432,19 @@
             border: 1px solid #fecaca;
         }
 
+        .rx-status.loading {
+            display: block;
+            background: #f8fafc;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-prescription.has-rx {
+            background: #ecfdf5;
+            color: #047857;
+            border-color: #6ee7b7;
+        }
+
         .rx-mode-badge {
             display: inline-block;
             margin-bottom: 16px;
@@ -538,6 +575,9 @@
                 <button class="btn btn-sm btn-secondary" id="filterToday" onclick="setActive(this);filterData('today')">Today</button>
                 <button class="btn btn-sm btn-secondary" id="filterUpcoming" onclick="setActive(this);filterData('upcoming')">Upcoming</button>
                 <button class="btn btn-sm btn-outline" id="filterPast" onclick="setActive(this);filterData('past')">Past appointments</button>
+                <div class="admin-search-wrap">
+                    <input type="search" id="patientSearch" class="admin-search-input" placeholder="Search patient name…" oninput="onPatientSearchInput()">
+                </div>
             </div>
 
             <div class="admin-card appt-list-scroll">
@@ -754,9 +794,56 @@
             if (isRx && !skipReset) resetPrescriptionForm();
         }
 
-        async function openPrescriptionFor(name, phone, date) {
+        function normalizePhoneForApi(phone) {
+            const d = String(phone || '').replace(/\D/g, '');
+            if (!d || d.length < 10) return '';
+            if (d.length === 10 && /^[6-9]/.test(d)) return d;
+            if (d.length === 11 && d.startsWith('0')) return d.slice(1);
+            if (d.length === 12 && d.startsWith('91')) return d.slice(2);
+            return d.length >= 10 && d.length <= 15 ? d : '';
+        }
+
+        function applyPrescriptionToForm(rx, fallback = {}) {
+            if (!rx) return false;
+            document.getElementById('rxRecordId').value = rx.recordId || '';
+            document.getElementById('rxPatientName').value = rx.patientName || fallback.name || '';
+            document.getElementById('rxPatientPhone').value = rx.patientPhone || fallback.phone || '';
+            document.getElementById('rxDate').value = rx.date || fallback.date || new Date().toLocaleDateString('en-CA');
+            setMedicinesInForm(rx.medicines || []);
+            setPrescriptionMode('edit');
+            return true;
+        }
+
+        async function fetchPrescriptionById(recordId) {
+            const res = await fetch(`${API}/prescriptions/${encodeURIComponent(recordId)}`, {
+                headers: { 'X-Admin-Password': getAdminPassword() },
+            });
+            if (res.status === 401) {
+                alert('Session expired. Please log in again.');
+                logout();
+                return null;
+            }
+            const data = await res.json();
+            return res.ok ? data.prescription : null;
+        }
+
+        async function fetchPrescriptionByLookup(phone, date) {
+            const params = new URLSearchParams({ phone, date });
+            const res = await fetch(`${API}/prescriptions/lookup?${params}`, {
+                headers: { 'X-Admin-Password': getAdminPassword() },
+            });
+            if (res.status === 401) {
+                alert('Session expired. Please log in again.');
+                logout();
+                return null;
+            }
+            const data = await res.json();
+            return res.ok ? data.prescription : null;
+        }
+
+        async function openPrescriptionFor(name, phone, date, recordId) {
             switchTab('prescriptions', { skipReset: true });
-            showRxStatus('', '');
+            showRxStatus('loading', 'Checking for existing prescription…');
 
             document.getElementById('rxRecordId').value = '';
             document.getElementById('rxPatientName').value = name || '';
@@ -765,33 +852,25 @@
             setMedicinesInForm([{ name: '', schedule: '' }]);
             setPrescriptionMode('new');
 
-            if (!phone || !date) {
-                document.querySelector('#rxMedicineRows .rx-med-name')?.focus();
-                return;
-            }
+            const fallback = { name, phone, date };
 
             try {
-                const params = new URLSearchParams({ phone, date });
-                const res = await fetch(`${API}/prescriptions/lookup?${params}`, {
-                    headers: { 'X-Admin-Password': getAdminPassword() },
-                });
-
-                if (res.status === 401) {
-                    alert('Session expired. Please log in again.');
-                    logout();
-                    return;
+                let rx = null;
+                if (recordId) {
+                    rx = await fetchPrescriptionById(recordId);
                 }
-
-                const data = await res.json();
-                if (data.prescription) {
-                    document.getElementById('rxRecordId').value = data.prescription.recordId;
-                    document.getElementById('rxPatientName').value = data.prescription.patientName || name || '';
-                    document.getElementById('rxPatientPhone').value = data.prescription.patientPhone || phone || '';
-                    setMedicinesInForm(data.prescription.medicines || []);
-                    setPrescriptionMode('edit');
+                const lookupPhone = normalizePhoneForApi(phone);
+                if (!rx && lookupPhone && date) {
+                    rx = await fetchPrescriptionByLookup(lookupPhone, date);
+                }
+                if (applyPrescriptionToForm(rx, fallback)) {
+                    showRxStatus('success', 'Existing prescription loaded — edit and save to update.');
+                } else {
+                    showRxStatus('', '');
                 }
             } catch (err) {
                 console.warn('Could not load existing prescription:', err);
+                showRxStatus('', '');
             }
 
             document.querySelector('#rxMedicineRows .rx-med-name')?.focus();
@@ -887,6 +966,7 @@
                 if (data.recordId) {
                     document.getElementById('rxRecordId').value = data.recordId;
                     setPrescriptionMode('edit');
+                    loadAppointments();
                 }
 
                 if (data.whatsappSent) {
@@ -906,6 +986,17 @@
 
         let ALL_APPOINTMENTS = [];
         let CURRENT_FILTER = 'current';
+        let PATIENT_SEARCH = '';
+
+        function onPatientSearchInput() {
+            PATIENT_SEARCH = document.getElementById('patientSearch')?.value.trim().toLowerCase() || '';
+            filterData(CURRENT_FILTER, { keepActive: true });
+        }
+
+        function matchesPatientSearch(appt) {
+            if (!PATIENT_SEARCH) return true;
+            return String(appt.name || '').toLowerCase().includes(PATIENT_SEARCH);
+        }
 
         async function loadAppointments() {
             const res = await fetch(`${API}/appointments/all`, {
@@ -971,7 +1062,9 @@
             const rows = sortAppointments(data, { past: CURRENT_FILTER === 'past' });
 
             if (!rows.length) {
-                const emptyMsg = CURRENT_FILTER === 'past'
+                const emptyMsg = PATIENT_SEARCH
+                    ? `No patients matching “${esc(PATIENT_SEARCH)}”`
+                    : CURRENT_FILTER === 'past'
                     ? 'No past appointments'
                     : 'No appointments found';
                 container.innerHTML = `
@@ -988,7 +1081,11 @@
                 const nameJs = JSON.stringify(a.name || '');
                 const phoneJs = JSON.stringify(a.phone || '');
                 const dateJs = JSON.stringify(a.date || '');
-                const rxBtn = `<button type="button" class="btn btn-sm btn-prescription" onclick='openPrescriptionFor(${nameJs}, ${phoneJs}, ${dateJs})'>Prescription</button>`;
+                const recordIdJs = JSON.stringify(a.prescriptionRecordId || '');
+                const hasRx = !!a.prescriptionRecordId;
+                const rxLabel = hasRx ? 'Edit prescription' : 'Prescription';
+                const rxClass = hasRx ? 'btn-prescription has-rx' : 'btn-prescription';
+                const rxBtn = `<button type="button" class="btn btn-sm ${rxClass}" onclick='openPrescriptionFor(${nameJs}, ${phoneJs}, ${dateJs}, ${recordIdJs})'>${rxLabel}</button>`;
                 const actions = a.status === 'confirmed'
                     ? `<div class="appt-actions">
                 ${rxBtn}
@@ -1025,6 +1122,8 @@
                 // default: today and future only — no past days
                 filtered = ALL_APPOINTMENTS.filter(a => a.date >= todayStr);
             }
+
+            filtered = filtered.filter(matchesPatientSearch);
 
             if (!keepActive) {
                 const btnMap = {

@@ -8,6 +8,8 @@ const {
   addVisitRecord,
   notifyPatientVisitRecord,
   findAdminPrescriptionByPhoneAndDate,
+  getAdminPrescriptionById,
+  normalizeStoredPhone,
   updateAdminPrescription,
 } = require('../services/patientProfileService');
 
@@ -76,12 +78,17 @@ router.get(
   '/lookup',
   requireAdmin,
   validate([
-    query('phone').trim().isLength({ min: 10, max: 15 }).withMessage('Phone is required'),
+    query('phone').custom((value, { req }) => {
+      const normalized = normalizeStoredPhone(value);
+      if (!normalized) throw new Error('Valid phone number is required');
+      req.normalizedPhone = normalized;
+      return true;
+    }),
     query('date').matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('Date must be YYYY-MM-DD'),
   ]),
   async (req, res) => {
     try {
-      const prescription = await findAdminPrescriptionByPhoneAndDate(req.query.phone, req.query.date);
+      const prescription = await findAdminPrescriptionByPhoneAndDate(req.normalizedPhone, req.query.date);
       return res.json({ success: true, prescription });
     } catch (err) {
       console.error('GET /prescriptions/lookup error:', err);
@@ -89,6 +96,19 @@ router.get(
     }
   }
 );
+
+router.get('/:id', requireAdmin, async (req, res) => {
+  try {
+    const prescription = await getAdminPrescriptionById(req.params.id);
+    if (!prescription) {
+      return res.status(404).json({ success: false, message: 'Prescription not found' });
+    }
+    return res.json({ success: true, prescription });
+  } catch (err) {
+    console.error('GET /prescriptions/:id error:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Could not load prescription' });
+  }
+});
 
 router.post('/', requireAdmin, validate(prescriptionFields), async (req, res) => {
   try {
