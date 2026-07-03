@@ -44,8 +44,16 @@ function parseMedicinesText(text) {
     });
 }
 
+/** Accept array (new API) or string (legacy) from req.body.medicines */
+function parseMedicinesBody(raw) {
+  if (Array.isArray(raw)) return normalizeMedicinesList(raw);
+  if (typeof raw === 'string') return parseMedicinesText(raw);
+  return [];
+}
+
 module.exports = {
   normalizeMedicinesList,
   serializeMedicines,
   parseMedicinesText,
+  parseMedicinesBody,
 };

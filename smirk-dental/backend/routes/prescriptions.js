@@ -2,7 +2,7 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const { requireAdmin } = require('../middleware/adminAuth');
 const { generatePrescriptionPdf } = require('../services/prescriptionPdf');
-const { normalizeMedicinesList, serializeMedicines } = require('../services/medicinesFormat');
+const { serializeMedicines, parseMedicinesBody } = require('../services/medicinesFormat');
 const {
   findOrCreateProfile,
   addVisitRecord,
@@ -31,9 +31,16 @@ const validate = (rules) => [
 const prescriptionFields = [
   body('patientName').trim().isLength({ min: 2, max: 100 }).withMessage('Patient name is required'),
   body('patientPhone').trim().isLength({ min: 10, max: 15 }).withMessage('Valid phone number is required'),
-  body('medicines').isArray({ min: 1 }).withMessage('Add at least one medicine'),
-  body('medicines.*.name').trim().isLength({ min: 1, max: 200 }).withMessage('Medicine name is required'),
-  body('medicines.*.schedule').optional().trim().isLength({ max: 300 }).withMessage('Schedule is too long'),
+  body('medicines').custom((value) => {
+    const list = parseMedicinesBody(value);
+    if (!list.length) throw new Error('Add at least one medicine');
+    for (const m of list) {
+      if (!m.name) throw new Error('Medicine name is required');
+      if (m.name.length > 200) throw new Error('Medicine name is too long');
+      if (m.schedule.length > 300) throw new Error('Schedule is too long');
+    }
+    return true;
+  }),
   body('date')
     .optional()
     .matches(/^\d{4}-\d{2}-\d{2}$/)
@@ -87,7 +94,7 @@ router.post('/', requireAdmin, validate(prescriptionFields), async (req, res) =>
   try {
     const patientName = req.body.patientName.trim();
     const patientPhone = req.body.patientPhone.trim();
-    const medicines = normalizeMedicinesList(req.body.medicines);
+    const medicines = parseMedicinesBody(req.body.medicines);
     const date = req.body.date || new Date().toLocaleDateString('en-CA');
 
     const existing = await findAdminPrescriptionByPhoneAndDate(patientPhone, date);
@@ -133,7 +140,7 @@ router.put('/:id', requireAdmin, validate(prescriptionFields), async (req, res) 
   try {
     const patientName = req.body.patientName.trim();
     const patientPhone = req.body.patientPhone.trim();
-    const medicines = normalizeMedicinesList(req.body.medicines);
+    const medicines = parseMedicinesBody(req.body.medicines);
     const date = req.body.date || new Date().toLocaleDateString('en-CA');
 
     const rxFile = await generatePrescriptionPdf({ patientName, patientPhone, medicines, date });
