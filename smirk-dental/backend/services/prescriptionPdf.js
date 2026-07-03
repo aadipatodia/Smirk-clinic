@@ -31,6 +31,11 @@ function medicineRows(medicines) {
   return parseMedicinesText(medicines);
 }
 
+function drawLabelValue(doc, label, value) {
+  doc.font('Helvetica-Bold').text(`${label}: `, { continued: true });
+  doc.font('Helvetica').text(value);
+}
+
 function drawFooter(doc) {
   const bottom = doc.page.height - PAGE_MARGIN;
   doc
@@ -39,15 +44,11 @@ function drawFooter(doc) {
     .stroke('#cccccc');
 
   doc.font('Helvetica-Bold').fontSize(10).fillColor('#0f2a38');
-  doc.text(DOCTOR.name, PAGE_MARGIN, bottom - FOOTER_HEIGHT + 18, {
-    width: doc.page.width - PAGE_MARGIN * 2,
-    align: 'center',
-  });
+  doc.text(DOCTOR.name, PAGE_MARGIN, bottom - FOOTER_HEIGHT + 18);
+
   doc.font('Helvetica').fontSize(10).fillColor('#475569');
-  doc.text(`Phone: ${DOCTOR.phone}`, PAGE_MARGIN, bottom - FOOTER_HEIGHT + 34, {
-    width: doc.page.width - PAGE_MARGIN * 2,
-    align: 'center',
-  });
+  doc.text(`Phone: ${DOCTOR.phone}`, PAGE_MARGIN, bottom - FOOTER_HEIGHT + 34);
+
   doc.fillColor('#000000');
 }
 
@@ -90,10 +91,10 @@ function generatePrescriptionPdf({ patientName, patientPhone, medicines, date })
     doc.fontSize(14).font('Helvetica-Bold').text('Prescription', { align: 'center' });
     doc.moveDown(1);
 
-    doc.fontSize(11).font('Helvetica');
-    doc.text(`Date: ${date}`);
-    doc.text(`Patient: ${patientName}`);
-    doc.text(`Phone: ${patientPhone}`);
+    doc.fontSize(11);
+    drawLabelValue(doc, 'Date', date);
+    drawLabelValue(doc, 'Patient', patientName);
+    drawLabelValue(doc, 'Phone', patientPhone);
     doc.moveDown(1.2);
 
     const col1X = PAGE_MARGIN;

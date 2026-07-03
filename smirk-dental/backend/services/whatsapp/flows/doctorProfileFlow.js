@@ -573,7 +573,10 @@ async function handleDoctorProfileFlow({ waId, event, ctx, session }) {
     return returnDoctorToMainMenu(waId);
   }
 
-  if (kind === 'button' && (id === 'D_MENU' || id === 'DPF_CANCEL')) {
+  if (
+    (kind === 'button' && (id === 'D_MENU' || id === 'DPF_CANCEL')) ||
+    (kind === 'list' && id === 'D_MENU')
+  ) {
     return returnDoctorToMainMenu(waId);
   }
 
