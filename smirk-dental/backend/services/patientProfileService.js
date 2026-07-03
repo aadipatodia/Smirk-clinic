@@ -283,6 +283,7 @@ async function addVisitRecord({
   date,
   procedureText,
   prescription,
+  medicinesText,
   createdByWaId,
   geminiConfidence,
 }) {
@@ -302,12 +303,68 @@ async function addVisitRecord({
     date,
     procedureText: proc,
     ...(prescription ? { prescription } : {}),
+    ...(medicinesText ? { medicinesText: medicinesText.trim().slice(0, 3000) } : {}),
     createdByWaId,
     geminiConfidence,
   });
 
   if (!profile.lastVisitDate || date > profile.lastVisitDate) {
     profile.lastVisitDate = date;
+    await profile.save();
+  }
+
+  return { profile, record };
+}
+
+/** Admin prescription for a patient on a given visit date (if any). */
+async function findAdminPrescriptionByPhoneAndDate(phone, date) {
+  const profile = await findProfileByPhone(phone);
+  if (!profile) return null;
+
+  const record = await PatientVisitRecord.findOne({
+    patientProfileId: profile._id,
+    date,
+    createdByWaId: 'admin',
+    'prescription.storagePath': { $exists: true },
+  })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  if (!record) return null;
+
+  return {
+    recordId: String(record._id),
+    profileId: String(profile._id),
+    patientName: profile.name || '',
+    patientPhone: profile.phone,
+    date: record.date,
+    medicines: record.medicinesText || '',
+    hasPdf: !!record.prescription?.storagePath,
+  };
+}
+
+async function updateAdminPrescription(recordId, { patientName, patientPhone, medicines, date, prescription }) {
+  const record = await PatientVisitRecord.findById(recordId);
+  if (!record) throw Object.assign(new Error('Prescription not found'), { code: 'NOT_FOUND' });
+  if (record.createdByWaId !== 'admin') {
+    throw Object.assign(new Error('Only admin prescriptions can be edited here'), { code: 'VALIDATION' });
+  }
+
+  const profile = await PatientProfile.findById(record.patientProfileId);
+  if (!profile) throw Object.assign(new Error('Patient not found'), { code: 'NOT_FOUND' });
+
+  if (patientName?.trim()) profile.name = patientName.trim().slice(0, 100);
+  const normalizedPhone = normalizeStoredPhone(patientPhone);
+  if (normalizedPhone) profile.phone = normalizedPhone;
+  await profile.save();
+
+  if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) record.date = date;
+  record.medicinesText = medicines.trim().slice(0, 3000);
+  record.prescription = prescription;
+  await record.save();
+
+  if (!profile.lastVisitDate || record.date > profile.lastVisitDate) {
+    profile.lastVisitDate = record.date;
     await profile.save();
   }
 
@@ -329,6 +386,8 @@ module.exports = {
   addVisitRecord,
   notifyPatientVisitRecord,
   forwardPrescriptionToPatient,
+  findAdminPrescriptionByPhoneAndDate,
+  updateAdminPrescription,
   phoneDigits,
   patientWaTo,
   normalizeStoredPhone,

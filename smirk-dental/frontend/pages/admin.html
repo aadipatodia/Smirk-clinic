@@ -34,7 +34,7 @@
 
         .appt-row {
             display: grid;
-            grid-template-columns: 1.3fr 1.1fr 0.95fr 0.85fr 0.95fr minmax(190px, auto);
+            grid-template-columns: 1.1fr 1fr 0.85fr 0.75fr 0.85fr minmax(300px, 1.4fr);
             gap: 12px;
             padding: 14px 16px;
             align-items: center;
@@ -104,6 +104,24 @@
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
+            justify-content: flex-start;
+        }
+
+        .appt-actions .btn-sm {
+            border-radius: 8px;
+            white-space: nowrap;
+            padding: 0.45rem 0.75rem;
+            font-size: 0.74rem;
+        }
+
+        .appt-actions .btn-prescription {
+            background: #f0fdfa;
+            color: #0f766e;
+            border: 1px solid #99f6e4;
+        }
+
+        .appt-actions .btn-prescription:hover {
+            background: #ccfbf1;
         }
 
         .appt-empty {
@@ -186,7 +204,7 @@
         }
 
         .appt-list-inner {
-            min-width: 820px;
+            min-width: 960px;
         }
 
         .admin-filter-row {
@@ -200,22 +218,29 @@
             display: flex;
             gap: 8px;
             margin-bottom: 20px;
+            background: white;
+            padding: 6px;
+            border-radius: 12px;
+            width: fit-content;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
         }
 
         .admin-tabs .btn-tab {
-            padding: 10px 20px;
-            border-radius: 10px;
+            padding: 10px 22px;
+            border-radius: 8px;
             border: none;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             font-weight: 600;
             cursor: pointer;
-            background: #e2e8f0;
-            color: #475569;
+            background: transparent;
+            color: #64748b;
+            transition: background 0.15s, color 0.15s;
         }
 
         .admin-tabs .btn-tab.active {
             background: var(--teal, #2aafaa);
             color: white;
+            box-shadow: 0 2px 8px rgba(42, 175, 169, 0.35);
         }
 
         .admin-section {
@@ -308,6 +333,32 @@
             background: #fef2f2;
             color: #991b1b;
             border: 1px solid #fecaca;
+        }
+
+        .rx-mode-badge {
+            display: inline-block;
+            margin-bottom: 16px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .rx-mode-badge.new {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .rx-mode-badge.edit {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .rx-form-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
         }
 
         @media (max-width: 900px) {
@@ -423,17 +474,19 @@
 
             <div id="sectionPrescriptions" class="admin-section">
                 <div class="admin-card">
-                    <h3 style="margin:0 0 8px;font-family:var(--font-display,Georgia,serif);color:#0f2a38;">New Prescription</h3>
-                    <p style="margin:0 0 20px;font-size:0.88rem;color:#64748b;">Fill in patient details and medicines. A PDF is generated and sent to the patient on WhatsApp when you save.</p>
+                    <h3 id="rxFormTitle" style="margin:0 0 8px;font-family:var(--font-display,Georgia,serif);color:#0f2a38;">New Prescription</h3>
+                    <p id="rxFormSubtitle" style="margin:0 0 12px;font-size:0.88rem;color:#64748b;">Patient details are pre-filled from the appointment when available. Edit as needed, then save to generate a PDF and send on WhatsApp.</p>
+                    <div id="rxModeBadge" class="rx-mode-badge new">New prescription</div>
 
                     <div class="rx-clinic-preview">
                         <strong>Smirk Dental Clinic &amp; Implant Centre</strong>
                         C6/7, 6096, Ground Floor, Gate 5, C-6<br>
                         Vasant Kunj, New Delhi – 110070<br><br>
-                        <span style="color:#94a3b8;">Signed by Dr. Mehak Gupta · 8130972879 (fixed on every prescription)</span>
+                        <span style="color:#94a3b8;">Signed by Dr. Mehak Gupta · 8130972879</span>
                     </div>
 
                     <form id="prescriptionForm" onsubmit="submitPrescription(event)">
+                        <input type="hidden" id="rxRecordId" value="">
                         <div class="rx-form-grid">
                             <div>
                                 <label class="rx-form-label" for="rxPatientName">Patient name</label>
@@ -452,7 +505,10 @@
                                 <textarea id="rxMedicines" class="rx-form-textarea" placeholder="One medicine per line, e.g.&#10;Amoxicillin 500mg — 1 tab twice daily × 5 days&#10;Ibuprofen 400mg — as needed for pain" required maxlength="3000"></textarea>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary" id="rxSubmitBtn">Save &amp; send to patient</button>
+                        <div class="rx-form-actions">
+                            <button type="submit" class="btn btn-primary" id="rxSubmitBtn">Save &amp; send to patient</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="resetPrescriptionForm()">Clear form</button>
+                        </div>
                         <div id="rxStatus" class="rx-status"></div>
                     </form>
                 </div>
@@ -509,28 +565,89 @@
         function showAdmin() {
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
-            document.getElementById('rxDate').value = new Date().toLocaleDateString('en-CA');
+            resetPrescriptionForm();
             loadAppointments();
             applyPrescriptionPrefill();
             if (new URLSearchParams(location.search).get('tab') === 'prescriptions') {
-                switchTab('prescriptions');
+                switchTab('prescriptions', { skipReset: true });
+            } else {
+                switchTab('appointments', { skipReset: true });
             }
         }
 
-        function switchTab(tab) {
+        function resetPrescriptionForm() {
+            document.getElementById('rxRecordId').value = '';
+            document.getElementById('rxPatientName').value = '';
+            document.getElementById('rxPatientPhone').value = '';
+            document.getElementById('rxMedicines').value = '';
+            document.getElementById('rxDate').value = new Date().toLocaleDateString('en-CA');
+            setPrescriptionMode('new');
+            showRxStatus('', '');
+        }
+
+        function setPrescriptionMode(mode) {
+            const isEdit = mode === 'edit';
+            document.getElementById('rxFormTitle').textContent = isEdit ? 'Edit Prescription' : 'New Prescription';
+            document.getElementById('rxSubmitBtn').textContent = isEdit
+                ? 'Update & send to patient'
+                : 'Save & send to patient';
+            const badge = document.getElementById('rxModeBadge');
+            badge.textContent = isEdit
+                ? 'Existing prescription — edit and save to regenerate PDF & resend'
+                : 'New prescription';
+            badge.className = `rx-mode-badge ${isEdit ? 'edit' : 'new'}`;
+        }
+
+        function switchTab(tab, { skipReset } = {}) {
             const isRx = tab === 'prescriptions';
             document.getElementById('sectionAppointments').classList.toggle('active', !isRx);
             document.getElementById('sectionPrescriptions').classList.toggle('active', isRx);
             document.getElementById('tabAppointments').classList.toggle('active', !isRx);
             document.getElementById('tabPrescriptions').classList.toggle('active', isRx);
             document.getElementById('adminPageTitle').textContent = isRx ? '📋 Prescriptions' : '🦷 Appointments';
+            if (isRx && !skipReset) resetPrescriptionForm();
         }
 
-        function openPrescriptionFor(name, phone, date) {
-            switchTab('prescriptions');
+        async function openPrescriptionFor(name, phone, date) {
+            switchTab('prescriptions', { skipReset: true });
+            showRxStatus('', '');
+
+            document.getElementById('rxRecordId').value = '';
             document.getElementById('rxPatientName').value = name || '';
             document.getElementById('rxPatientPhone').value = phone || '';
-            if (date) document.getElementById('rxDate').value = date;
+            document.getElementById('rxDate').value = date || new Date().toLocaleDateString('en-CA');
+            document.getElementById('rxMedicines').value = '';
+            setPrescriptionMode('new');
+
+            if (!phone || !date) {
+                document.getElementById('rxMedicines').focus();
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams({ phone, date });
+                const res = await fetch(`${API}/prescriptions/lookup?${params}`, {
+                    headers: { 'X-Admin-Password': getAdminPassword() },
+                });
+
+                if (res.status === 401) {
+                    alert('Session expired. Please log in again.');
+                    logout();
+                    return;
+                }
+
+                const data = await res.json();
+                if (data.prescription) {
+                    document.getElementById('rxRecordId').value = data.prescription.recordId;
+                    document.getElementById('rxPatientName').value = data.prescription.patientName || name || '';
+                    document.getElementById('rxPatientPhone').value = data.prescription.patientPhone || phone || '';
+                    document.getElementById('rxMedicines').value = data.prescription.medicines || '';
+                    setPrescriptionMode('edit');
+                }
+            } catch (err) {
+                console.warn('Could not load existing prescription:', err);
+            }
+
             document.getElementById('rxMedicines').focus();
         }
 
@@ -539,9 +656,12 @@
             const name = params.get('name');
             const phone = params.get('phone');
             const date = params.get('date');
-            if (name) document.getElementById('rxPatientName').value = name;
-            if (phone) document.getElementById('rxPatientPhone').value = phone;
-            if (date) document.getElementById('rxDate').value = date;
+            if (name || phone) {
+                if (name) document.getElementById('rxPatientName').value = name;
+                if (phone) document.getElementById('rxPatientPhone').value = phone;
+                if (date) document.getElementById('rxDate').value = date;
+                if (phone && date) openPrescriptionFor(name || '', phone, date);
+            }
         }
 
         function showRxStatus(type, message) {
@@ -553,8 +673,10 @@
         async function submitPrescription(e) {
             e.preventDefault();
             const btn = document.getElementById('rxSubmitBtn');
+            const recordId = document.getElementById('rxRecordId').value.trim();
+            const isEdit = !!recordId;
             btn.disabled = true;
-            btn.textContent = 'Sending…';
+            btn.textContent = isEdit ? 'Updating…' : 'Sending…';
             showRxStatus('', '');
 
             const payload = {
@@ -565,8 +687,9 @@
             };
 
             try {
-                const res = await fetch(`${API}/prescriptions`, {
-                    method: 'POST',
+                const url = isEdit ? `${API}/prescriptions/${recordId}` : `${API}/prescriptions`;
+                const res = await fetch(url, {
+                    method: isEdit ? 'PUT' : 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Admin-Password': getAdminPassword(),
@@ -582,14 +705,25 @@
 
                 const data = await res.json();
 
+                if (res.status === 409 && data.recordId) {
+                    document.getElementById('rxRecordId').value = data.recordId;
+                    setPrescriptionMode('edit');
+                    showRxStatus('warning', 'A prescription already exists for this date. Loaded for editing — update and save again.');
+                    return;
+                }
+
                 if (!res.ok) {
                     showRxStatus('error', data.message || 'Could not save prescription.');
                     return;
                 }
 
+                if (data.recordId) {
+                    document.getElementById('rxRecordId').value = data.recordId;
+                    setPrescriptionMode('edit');
+                }
+
                 if (data.whatsappSent) {
                     showRxStatus('success', data.message);
-                    document.getElementById('rxMedicines').value = '';
                 } else {
                     showRxStatus('warning', `${data.message}${data.whatsappError ? ' — ' + data.whatsappError : ''}`);
                 }
@@ -597,7 +731,9 @@
                 showRxStatus('error', 'Network error. Please try again.');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Save & send to patient';
+                btn.textContent = document.getElementById('rxRecordId').value.trim()
+                    ? 'Update & send to patient'
+                    : 'Save & send to patient';
             }
         }
 
@@ -679,12 +815,12 @@
                 const nameJs = JSON.stringify(a.name || '');
                 const phoneJs = JSON.stringify(a.phone || '');
                 const dateJs = JSON.stringify(a.date || '');
-                const rxBtn = `<button class="btn btn-sm btn-outline" onclick='openPrescriptionFor(${nameJs}, ${phoneJs}, ${dateJs})'>Rx</button>`;
+                const rxBtn = `<button type="button" class="btn btn-sm btn-prescription" onclick='openPrescriptionFor(${nameJs}, ${phoneJs}, ${dateJs})'>Prescription</button>`;
                 const actions = a.status === 'confirmed'
                     ? `<div class="appt-actions">
                 ${rxBtn}
-                <button class="btn btn-sm btn-secondary" onclick="reschedule('${id}')">Reschedule</button>
-                <button class="btn btn-sm btn-primary" onclick="cancel('${id}')">Cancel</button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="reschedule('${id}')">Reschedule</button>
+                <button type="button" class="btn btn-sm btn-primary" onclick="cancel('${id}')">Cancel</button>
                </div>`
                     : `<div class="appt-actions">${rxBtn}</div>`;
 

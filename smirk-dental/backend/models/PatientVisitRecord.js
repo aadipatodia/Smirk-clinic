@@ -30,6 +30,8 @@ const patientVisitRecordSchema = new mongoose.Schema(
       storagePath: { type: String, trim: true },
       waMediaId: { type: String, trim: true },
     },
+    /** Typed medicines text (admin portal); used to reload for editing. */
+    medicinesText: { type: String, trim: true, maxlength: 3000 },
     createdByWaId: { type: String, trim: true },
     geminiConfidence: { type: Number, min: 0, max: 1 },
   },
