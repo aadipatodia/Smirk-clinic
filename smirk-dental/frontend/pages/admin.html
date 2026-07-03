@@ -576,7 +576,7 @@
                 <button class="btn btn-sm btn-secondary" id="filterUpcoming" onclick="setActive(this);filterData('upcoming')">Upcoming</button>
                 <button class="btn btn-sm btn-outline" id="filterPast" onclick="setActive(this);filterData('past')">Past appointments</button>
                 <div class="admin-search-wrap">
-                    <input type="search" id="patientSearch" class="admin-search-input" placeholder="Search patient name…" oninput="onPatientSearchInput()">
+                    <input type="search" id="patientSearch" class="admin-search-input" placeholder="Search name or phone…" oninput="onPatientSearchInput()">
                 </div>
             </div>
 
@@ -1004,9 +1004,20 @@
             filterData(CURRENT_FILTER, { keepActive: true });
         }
 
+        function phoneDigitsForSearch(phone) {
+            const d = String(phone || '').replace(/\D/g, '');
+            if (d.length === 12 && d.startsWith('91')) return d.slice(2);
+            if (d.length === 11 && d.startsWith('0')) return d.slice(1);
+            return d;
+        }
+
         function matchesPatientSearch(appt) {
             if (!PATIENT_SEARCH) return true;
-            return String(appt.name || '').toLowerCase().includes(PATIENT_SEARCH);
+            const q = PATIENT_SEARCH.toLowerCase();
+            if (String(appt.name || '').toLowerCase().includes(q)) return true;
+            const searchDigits = q.replace(/\D/g, '');
+            if (!searchDigits) return false;
+            return phoneDigitsForSearch(appt.phone).includes(searchDigits);
         }
 
         async function loadAppointments() {
