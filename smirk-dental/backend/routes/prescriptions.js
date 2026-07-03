@@ -47,6 +47,11 @@ const prescriptionFields = [
     .optional()
     .matches(/^\d{4}-\d{2}-\d{2}$/)
     .withMessage('Date must be YYYY-MM-DD'),
+  body('procedure')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Procedure details must be 500 characters or less'),
 ];
 
 async function saveAndNotify({ record, profile, isUpdate }) {
@@ -116,6 +121,7 @@ router.post('/', requireAdmin, validate(prescriptionFields), async (req, res) =>
     const patientPhone = req.body.patientPhone.trim();
     const medicines = parseMedicinesBody(req.body.medicines);
     const date = req.body.date || new Date().toLocaleDateString('en-CA');
+    const procedureText = req.body.procedure?.trim() || 'Prescription';
 
     const existing = await findAdminPrescriptionByPhoneAndDate(patientPhone, date);
     if (existing?.recordId) {
@@ -128,12 +134,18 @@ router.post('/', requireAdmin, validate(prescriptionFields), async (req, res) =>
 
     const profile = await findOrCreateProfile(patientPhone, patientName);
 
-    const rxFile = await generatePrescriptionPdf({ patientName, patientPhone, medicines, date });
+    const rxFile = await generatePrescriptionPdf({
+      patientName,
+      patientPhone,
+      medicines,
+      date,
+      procedure: procedureText === 'Prescription' ? '' : procedureText,
+    });
 
     const { record } = await addVisitRecord({
       profileId: profile._id,
       date,
-      procedureText: 'Prescription',
+      procedureText,
       medicinesText: serializeMedicines(medicines),
       prescription: {
         mediaType: rxFile.mediaType,
@@ -162,14 +174,22 @@ router.put('/:id', requireAdmin, validate(prescriptionFields), async (req, res) 
     const patientPhone = req.body.patientPhone.trim();
     const medicines = parseMedicinesBody(req.body.medicines);
     const date = req.body.date || new Date().toLocaleDateString('en-CA');
+    const procedureText = req.body.procedure?.trim() || 'Prescription';
 
-    const rxFile = await generatePrescriptionPdf({ patientName, patientPhone, medicines, date });
+    const rxFile = await generatePrescriptionPdf({
+      patientName,
+      patientPhone,
+      medicines,
+      date,
+      procedure: procedureText === 'Prescription' ? '' : procedureText,
+    });
 
     const { profile, record } = await updateAdminPrescription(req.params.id, {
       patientName,
       patientPhone,
       medicines,
       date,
+      procedureText,
       prescription: {
         mediaType: rxFile.mediaType,
         mimeType: rxFile.mimeType,

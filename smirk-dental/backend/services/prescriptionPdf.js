@@ -52,20 +52,64 @@ function drawFooter(doc) {
   doc.fillColor('#000000');
 }
 
-function ensureSpaceForRow(doc, y, rowHeight) {
-  const maxY = doc.page.height - PAGE_MARGIN - FOOTER_HEIGHT;
-  if (y + rowHeight > maxY) {
-    doc.addPage();
-    return PAGE_MARGIN;
+function contentMaxY(doc) {
+  return doc.page.height - PAGE_MARGIN - FOOTER_HEIGHT;
+}
+
+function startContinuationPage(doc) {
+  drawFooter(doc);
+  doc.addPage();
+  doc.fontSize(10).font('Helvetica').fillColor('#64748b');
+  doc.text('Prescription (continued)', PAGE_MARGIN, PAGE_MARGIN);
+  doc.fillColor('#000000');
+  return PAGE_MARGIN + 18;
+}
+
+function ensureSpace(doc, y, neededHeight) {
+  if (y + neededHeight > contentMaxY(doc)) {
+    return startContinuationPage(doc);
   }
+  return y;
+}
+
+function drawBlockText(doc, text, x, y, width) {
+  if (!text?.trim()) return y;
+
+  doc.font('Helvetica').fontSize(10);
+  const lineHeight = doc.currentLineHeight() + 2;
+  const paragraphs = text.trim().split(/\n+/);
+
+  for (const para of paragraphs) {
+    const words = para.split(/\s+/).filter(Boolean);
+    let line = '';
+
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (doc.widthOfString(test) > width && line) {
+        y = ensureSpace(doc, y, lineHeight);
+        doc.text(line, x, y, { width, lineBreak: false });
+        y += lineHeight;
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+
+    if (line) {
+      y = ensureSpace(doc, y, lineHeight);
+      doc.text(line, x, y, { width, lineBreak: false });
+      y += lineHeight + 6;
+    }
+  }
+
   return y;
 }
 
 /**
  * Generate a prescription PDF and save to uploads/prescriptions/.
- * @param {{ patientName: string, patientPhone: string, medicines: Array<{name:string,schedule:string}>|string, date: string }}
+ * @param {{ patientName: string, patientPhone: string, medicines: Array<{name:string,schedule:string}>|string, date: string, procedure?: string }}
  */
-function generatePrescriptionPdf({ patientName, patientPhone, medicines, date }) {
+function generatePrescriptionPdf({ patientName, patientPhone, medicines, date, procedure }) {
   ensureUploadDir();
 
   const filename = `rx_admin_${Date.now()}.pdf`;
@@ -97,13 +141,23 @@ function generatePrescriptionPdf({ patientName, patientPhone, medicines, date })
     drawLabelValue(doc, 'Phone', patientPhone);
     doc.moveDown(1.2);
 
+    let y = doc.y;
+
+    if (procedure?.trim()) {
+      y = ensureSpace(doc, y, 40);
+      doc.font('Helvetica-Bold').fontSize(11).text('Procedure', PAGE_MARGIN, y);
+      y += 18;
+      doc.font('Helvetica').fontSize(10);
+      y = drawBlockText(doc, procedure.trim(), PAGE_MARGIN, y, doc.page.width - PAGE_MARGIN * 2);
+      y += 8;
+    }
+
     const col1X = PAGE_MARGIN;
     const col2X = PAGE_MARGIN + 230;
     const col1W = 210;
     const col2W = doc.page.width - PAGE_MARGIN - col2X;
 
-    let y = doc.y;
-
+    y = ensureSpace(doc, y, 38);
     doc.font('Helvetica-Bold').fontSize(11).text('Medicines', col1X, y);
     y += 22;
 
@@ -123,7 +177,7 @@ function generatePrescriptionPdf({ patientName, patientPhone, medicines, date })
       const schedH = doc.heightOfString(item.schedule || '—', { width: col2W });
       const rowH = Math.max(nameH, schedH, 14) + 10;
 
-      y = ensureSpaceForRow(doc, y, rowH);
+      y = ensureSpace(doc, y, rowH);
 
       doc.font('Helvetica-Bold').text(item.name, col1X, y, { width: col1W });
       doc.font('Helvetica').text(item.schedule || '—', col2X, y, { width: col2W });
@@ -137,7 +191,6 @@ function generatePrescriptionPdf({ patientName, patientPhone, medicines, date })
       y += 20;
     }
 
-    y = ensureSpaceForRow(doc, y, 20);
     drawFooter(doc);
 
     doc.end();

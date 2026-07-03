@@ -308,7 +308,7 @@
         }
 
         .rx-form-textarea {
-            min-height: 160px;
+            min-height: 80px;
             resize: vertical;
         }
 
@@ -624,6 +624,10 @@
                                 <label class="rx-form-label" for="rxDate">Date</label>
                                 <input type="date" id="rxDate" class="rx-form-input" required>
                             </div>
+                            <div class="full-width">
+                                <label class="rx-form-label" for="rxProcedure">Procedure details</label>
+                                <textarea id="rxProcedure" class="rx-form-textarea" placeholder="e.g. Root canal treatment on tooth 16, temporary filling placed" maxlength="500" rows="3"></textarea>
+                            </div>
                             <div class="rx-medicines-section">
                                 <label class="rx-form-label">Medicines</label>
                                 <div class="rx-med-table">
@@ -712,6 +716,7 @@
             document.getElementById('rxPatientName').value = '';
             document.getElementById('rxPatientPhone').value = '';
             document.getElementById('rxDate').value = new Date().toLocaleDateString('en-CA');
+            document.getElementById('rxProcedure').value = '';
             setMedicinesInForm([{ name: '', schedule: '' }]);
             setPrescriptionMode('new');
             showRxStatus('', '');
@@ -809,6 +814,7 @@
             document.getElementById('rxPatientName').value = rx.patientName || fallback.name || '';
             document.getElementById('rxPatientPhone').value = rx.patientPhone || fallback.phone || '';
             document.getElementById('rxDate').value = rx.date || fallback.date || new Date().toLocaleDateString('en-CA');
+            document.getElementById('rxProcedure').value = rx.procedure || '';
             setMedicinesInForm(rx.medicines || []);
             setPrescriptionMode('edit');
             return true;
@@ -849,6 +855,7 @@
             document.getElementById('rxPatientName').value = name || '';
             document.getElementById('rxPatientPhone').value = phone || '';
             document.getElementById('rxDate').value = date || new Date().toLocaleDateString('en-CA');
+            document.getElementById('rxProcedure').value = '';
             setMedicinesInForm([{ name: '', schedule: '' }]);
             setPrescriptionMode('new');
 
@@ -917,6 +924,7 @@
                 patientPhone: document.getElementById('rxPatientPhone').value.trim(),
                 medicines,
                 date: document.getElementById('rxDate').value,
+                procedure: document.getElementById('rxProcedure').value.trim(),
             };
 
             try {
@@ -952,6 +960,9 @@
                         const lookupData = await lookupRes.json();
                         if (lookupData.prescription?.medicines) {
                             setMedicinesInForm(lookupData.prescription.medicines);
+                        }
+                        if (lookupData.prescription?.procedure != null) {
+                            document.getElementById('rxProcedure').value = lookupData.prescription.procedure;
                         }
                     } catch (_) { /* keep current rows */ }
                     showRxStatus('warning', 'A prescription already exists for this date. Loaded for editing — update and save again.');

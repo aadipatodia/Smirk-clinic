@@ -318,12 +318,14 @@ async function addVisitRecord({
 }
 
 function formatAdminPrescription(profile, record) {
+  const procedure = record.procedureText || '';
   return {
     recordId: String(record._id),
     profileId: String(profile._id),
     patientName: profile.name || '',
     patientPhone: profile.phone,
     date: record.date,
+    procedure: procedure === 'Prescription' ? '' : procedure,
     medicines: parseMedicinesText(record.medicinesText),
     hasPdf: !!record.prescription?.storagePath,
   };
@@ -421,7 +423,7 @@ async function attachPrescriptionRecordIds(appointments) {
   });
 }
 
-async function updateAdminPrescription(recordId, { patientName, patientPhone, medicines, date, prescription }) {
+async function updateAdminPrescription(recordId, { patientName, patientPhone, medicines, date, procedureText, prescription }) {
   const record = await PatientVisitRecord.findById(recordId);
   if (!record) throw Object.assign(new Error('Prescription not found'), { code: 'NOT_FOUND' });
   if (record.createdByWaId !== 'admin') {
@@ -437,6 +439,7 @@ async function updateAdminPrescription(recordId, { patientName, patientPhone, me
   await profile.save();
 
   if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) record.date = date;
+  record.procedureText = (procedureText?.trim() || 'Prescription').slice(0, 500);
   record.medicinesText = Array.isArray(medicines)
     ? serializeMedicines(medicines).slice(0, 3000)
     : String(medicines || '').trim().slice(0, 3000);
