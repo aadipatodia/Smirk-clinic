@@ -48,6 +48,24 @@ const APPOINTMENT_CANCELLATION_PATIENT = {
 };
 
 /**
+ * whatsapp_template_prescription — IMAGE header (photo)
+ * body {{1}} name, {{2}} visit date, {{3}} procedure
+ */
+const PRESCRIPTION_IMAGE = {
+  name: 'whatsapp_template_prescription',
+  language: LANG_EN_US,
+};
+
+/**
+ * whatsapp_template_prescription_doc_2 — DOCUMENT header (PDF)
+ * body {{1}} name, {{2}} visit date, {{3}} procedure
+ */
+const PRESCRIPTION_DOC = {
+  name: 'whatsapp_template_prescription_doc_2',
+  language: LANG_EN_US,
+};
+
+/**
  * reschedule_patient — body {{1}} name, {{2}} clinic, {{3}} date, {{4}} time
  * URL button "View details"
  */
@@ -72,6 +90,8 @@ module.exports = {
   APPOINTMENT_CONFIRMATION_PATIENT,
   APPOINTMENT_CANCELLATION_PATIENT,
   RESCHEDULE_PATIENT,
+  PRESCRIPTION_IMAGE,
+  PRESCRIPTION_DOC,
   clinicName,
   appointmentDetailsUrl,
 };

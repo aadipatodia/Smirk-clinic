@@ -3,6 +3,8 @@ const PatientVisitRecord = require('../models/PatientVisitRecord');
 const Appointment = require('../models/Appointment');
 const { phoneDigits } = require('./appointmentService');
 const { sendText, sendTemplate, isServiceWindowError } = require('./whatsapp/outbound');
+const { PRESCRIPTION_IMAGE, PRESCRIPTION_DOC } = require('./whatsapp/templates');
+const { formatVisitDate } = require('./whatsapp/reviewPrompt');
 const { uploadMediaFromFile } = require('./whatsapp/media');
 const { serializeMedicines, parseMedicinesText } = require('./medicinesFormat');
 const fs = require('fs');
@@ -56,12 +58,8 @@ function templateLang() {
   return process.env.WHATSAPP_TEMPLATE_LANG || 'en';
 }
 
-function prescriptionTemplateName(rx) {
-  const isDoc = rxMediaType(rx) === 'document';
-  if (isDoc) {
-    return process.env.WHATSAPP_TEMPLATE_PRESCRIPTION_DOC || process.env.WHATSAPP_TEMPLATE_PRESCRIPTION;
-  }
-  return process.env.WHATSAPP_TEMPLATE_PRESCRIPTION;
+function hasPrescriptionTemplate() {
+  return true;
 }
 
 function visitUpdateTemplateName() {
@@ -69,30 +67,47 @@ function visitUpdateTemplateName() {
 }
 
 function templateSetupHint() {
-  return 'Set WHATSAPP_TEMPLATE_PRESCRIPTION (and WHATSAPP_TEMPLATE_PRESCRIPTION_DOC for PDFs) in .env — create & approve templates in Meta Business Manager.';
+  return 'Prescription templates are configured in code — ensure whatsapp_template_prescription and whatsapp_template_prescription_doc_2 are approved in Meta Business Manager.';
 }
 
-/** Body params: patient name, clinic, visit date, procedure. */
+/** Body params for visit-only updates: name, clinic, visit date, procedure. */
 function visitTemplateParams(profile, plainRecord) {
   const clinic = process.env.CLINIC_NAME || 'Smirk Dental';
   const name = profile.name || 'there';
-  return [name, clinic, plainRecord.date, plainRecord.procedureText.slice(0, 500)];
+  return [name, clinic, formatVisitDate(plainRecord.date), plainRecord.procedureText.slice(0, 500)];
+}
+
+/** Body params for prescriptions (image or PDF): name, visit date, procedure. */
+function prescriptionTemplateParams(profile, plainRecord) {
+  const name = profile.name || 'there';
+  return [name, formatVisitDate(plainRecord.date), plainRecord.procedureText.slice(0, 500)];
 }
 
 async function sendVisitViaTemplate(patientWa, bodyParams, rx) {
   const lang = templateLang();
 
   if (rx) {
-    const templateName = prescriptionTemplateName(rx);
-    if (!templateName) {
-      throw Object.assign(new Error(templateSetupHint()), { code: 'TEMPLATE_REQUIRED' });
-    }
-    const mediaId = await resolveRxMediaId(rx);
     const isDoc = rxMediaType(rx) === 'document';
-    await sendTemplate(patientWa, templateName, lang, bodyParams, {
+    const mediaId = await resolveRxMediaId(rx);
+
+    if (isDoc) {
+      const tpl = PRESCRIPTION_DOC;
+      await sendTemplate(patientWa, tpl.name, tpl.language, bodyParams, {
+        strict: true,
+        headerMedia: {
+          kind: 'document',
+          mediaId,
+          filename: rx.filename,
+        },
+      });
+      return;
+    }
+
+    const tpl = PRESCRIPTION_IMAGE;
+    await sendTemplate(patientWa, tpl.name, tpl.language, bodyParams, {
       strict: true,
       headerMedia: {
-        kind: isDoc ? 'document' : 'image',
+        kind: 'image',
         mediaId,
         filename: rx.filename,
       },
@@ -125,9 +140,11 @@ async function notifyPatientVisitRecord(profile, record) {
   const clinic = process.env.CLINIC_NAME || 'Smirk Dental';
   const name = profile.name || 'there';
   const summary = `🦷 ${clinic}\n\nHi ${name},\n\n📋 Prescription — ${plainRecord.date}\nProcedure: ${plainRecord.procedureText}`;
-  const bodyParams = visitTemplateParams(profile, plainRecord);
+  const bodyParams = rx
+    ? prescriptionTemplateParams(profile, plainRecord)
+    : visitTemplateParams(profile, plainRecord);
 
-  const hasTemplate = rx ? !!prescriptionTemplateName(rx) : !!visitUpdateTemplateName();
+  const hasTemplate = rx ? hasPrescriptionTemplate() : !!visitUpdateTemplateName();
 
   // Approved templates work any time — use them when configured.
   if (hasTemplate) {
