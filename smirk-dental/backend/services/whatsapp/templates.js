@@ -75,8 +75,30 @@ const RESCHEDULE_PATIENT = {
   buttonIndex: 0,
 };
 
+/**
+ * tomorrows_appointments_doc — static header "Tomorrow's Appointments"
+ * body {{1}} doctor name, {{2}} appointment list
+ */
+const TOMORROWS_APPOINTMENTS_DOC = {
+  name: 'tomorrows_appointments_doc',
+  language: 'en',
+};
+
+/**
+ * weeks_appointment — static header "This Week's Confirmed Appointments"
+ * body {{1}} doctor name, {{2}} appointment list
+ */
+const WEEKS_APPOINTMENT = {
+  name: 'weeks_appointment',
+  language: 'en',
+};
+
 function clinicName() {
   return process.env.CLINIC_NAME || 'Smirk Dental';
+}
+
+function doctorName() {
+  return process.env.DOCTOR_NAME || 'Dr. Mehak Gupta';
 }
 
 function appointmentDetailsUrl() {
@@ -92,6 +114,9 @@ module.exports = {
   RESCHEDULE_PATIENT,
   PRESCRIPTION_IMAGE,
   PRESCRIPTION_DOC,
+  TOMORROWS_APPOINTMENTS_DOC,
+  WEEKS_APPOINTMENT,
   clinicName,
+  doctorName,
   appointmentDetailsUrl,
 };

@@ -68,6 +68,37 @@ function monthsSinceVisit(visitYmd, todayYmd) {
   return Math.max(0, months);
 }
 
+/** Weekday (0=Sun) for a YYYY-MM-DD calendar date in IST. */
+function weekdayIstYmd(dateStr) {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  if (!y || !mo || !d) return null;
+  const inst = new Date(Date.UTC(y, mo - 1, d, 6, 30, 0));
+  return inst.getUTCDay();
+}
+
+/** Monday–Sunday bounds for the week containing `ymd` (IST calendar). */
+function weekBoundsYmdIst(ymd) {
+  const wd = weekdayIstYmd(ymd);
+  if (wd == null) return null;
+  const daysFromMonday = (wd + 6) % 7;
+  const start = addDaysYmdIst(ymd, -daysFromMonday);
+  if (!start) return null;
+  const end = addDaysYmdIst(start, 6);
+  if (!end) return null;
+  return { start, end };
+}
+
+/** YYYY-MM-DD → "Mon, Jul 5" for weekly digest display. */
+function formatWeekdayShortDateIst(ymd) {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd || '';
+  const [y, mo, d] = ymd.split('-').map(Number);
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const wd = weekdayIstYmd(ymd);
+  if (wd == null) return ymd;
+  return `${dayNames[wd]}, ${months[mo - 1]} ${d}`;
+}
+
 module.exports = {
   todayYmdIst,
   formatDateYmdInTimeZone,
@@ -75,4 +106,7 @@ module.exports = {
   monthsAgoYmdIst,
   isAnniversaryDay,
   monthsSinceVisit,
+  weekdayIstYmd,
+  weekBoundsYmdIst,
+  formatWeekdayShortDateIst,
 };

@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const { runAppointmentReminders } = require('./reminderJobs');
 const { runCheckupReminders } = require('./checkupReminderJobs');
 const { runPostAppointmentReviewPrompts } = require('./reviewRequestJobs');
-const { sendDoctorTomorrowSchedule } = require('./doctorNotifications');
+const { sendDoctorTomorrowSchedule, sendDoctorWeekSchedule } = require('./doctorNotifications');
 
 function startScheduler() {
     // Doctor: tomorrow's schedule every day at 8 PM IST
@@ -11,6 +11,17 @@ function startScheduler() {
             await sendDoctorTomorrowSchedule();
         } catch (err) {
             console.error('❌ Doctor schedule job error:', err.message);
+        }
+    }, {
+        timezone: 'Asia/Kolkata',
+    });
+
+    // Doctor: this week's confirmed appointments every Monday at 8 AM IST
+    cron.schedule('0 8 * * 1', async () => {
+        try {
+            await sendDoctorWeekSchedule();
+        } catch (err) {
+            console.error('❌ Doctor week schedule job error:', err.message);
         }
     }, {
         timezone: 'Asia/Kolkata',

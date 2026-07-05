@@ -1,4 +1,5 @@
-const { sendText } = require('./whatsapp/outbound');
+const { sendText, sendTemplate } = require('./whatsapp/outbound');
+const { TOMORROWS_APPOINTMENTS_DOC, WEEKS_APPOINTMENT, doctorName } = require('./whatsapp/templates');
 
 function getDoctorWaId() {
   const raw = process.env.DOCTOR_WA_ID || process.env.ADMIN_PHONE || '';
@@ -73,9 +74,31 @@ async function notifyDoctorAppointmentRescheduled(appt, oldDate, oldTime) {
 async function sendDoctorTomorrowSchedule() {
   const to = getDoctorWaId();
   if (!to) return;
-  const { buildTomorrowAppointmentsMessage } = require('./whatsapp/flows/doctorFlow');
-  const body = await buildTomorrowAppointmentsMessage();
-  await sendText(to, body);
+  const { buildTomorrowAppointmentsList } = require('./whatsapp/flows/doctorFlow');
+  const appointmentList = await buildTomorrowAppointmentsList();
+  const tpl = TOMORROWS_APPOINTMENTS_DOC;
+  await sendTemplate(
+    to,
+    tpl.name,
+    tpl.language,
+    [doctorName(), appointmentList],
+    { strict: true }
+  );
+}
+
+async function sendDoctorWeekSchedule() {
+  const to = getDoctorWaId();
+  if (!to) return;
+  const { buildWeekAppointmentsList } = require('./whatsapp/flows/doctorFlow');
+  const appointmentList = await buildWeekAppointmentsList();
+  const tpl = WEEKS_APPOINTMENT;
+  await sendTemplate(
+    to,
+    tpl.name,
+    tpl.language,
+    [doctorName(), appointmentList],
+    { strict: true }
+  );
 }
 
 module.exports = {
@@ -83,4 +106,5 @@ module.exports = {
   notifyDoctorAppointmentCancelled,
   notifyDoctorAppointmentRescheduled,
   sendDoctorTomorrowSchedule,
+  sendDoctorWeekSchedule,
 };

@@ -7,7 +7,7 @@ const {
   futureSlotsForDate,
 } = require('../../appointmentService');
 const { sendReplyButtons, sendText, sendListMessage } = require('../outbound');
-const { todayYmdIst, addDaysYmdIst } = require('../dateIst');
+const { todayYmdIst, addDaysYmdIst, weekBoundsYmdIst, formatWeekdayShortDateIst } = require('../dateIst');
 const { sendReviewPromptToPatient } = require('../reviewPrompt');
 const { isDoctorMenuEscape, returnDoctorToMainMenu } = require('../doctorEscape');
 const {
@@ -71,27 +71,84 @@ async function buildTodayAppointmentsMessage() {
   return msg.slice(0, 4000);
 }
 
-async function buildTomorrowAppointmentsMessage() {
+async function fetchTomorrowConfirmedAppointments() {
   const today = todayYmdIst();
-  if (!today) return 'Could not resolve tomorrow’s date.';
+  if (!today) return null;
   const date = addDaysYmdIst(today, 1);
-  if (!date) return 'Could not resolve tomorrow’s date.';
+  if (!date) return null;
   const list = await Appointment.find({
     date,
     status: { $in: ['confirmed'] },
   })
     .sort({ time: 1 })
     .lean();
+  return { date, list };
+}
 
-  if (!list.length) {
-    return `📅 ${date} (IST)\n\nNo confirmed appointments for tomorrow.`;
-  }
-  let msg = `📅 Tomorrow (${date} IST)\n\n`;
+function formatTomorrowAppointmentsList(list) {
+  if (!list.length) return 'No confirmed appointments for tomorrow.';
+  let msg = '';
   list.forEach((a, i) => {
-    msg += `${i + 1}. ${a.time} — ${a.name} (${a.phone})\n`;
+    msg += `${i + 1}. ${a.time} - ${a.name} (${a.phone})\n`;
   });
-  msg += `\nTotal: ${list.length}`;
+  return msg.trim().slice(0, 1024);
+}
+
+/** Appointment list string for tomorrows_appointments_doc template body {{2}}. */
+async function buildTomorrowAppointmentsList() {
+  const data = await fetchTomorrowConfirmedAppointments();
+  if (!data) return 'Could not resolve tomorrow’s date.';
+  return formatTomorrowAppointmentsList(data.list);
+}
+
+async function buildTomorrowAppointmentsMessage() {
+  const data = await fetchTomorrowConfirmedAppointments();
+  if (!data) return 'Could not resolve tomorrow’s date.';
+  const listText = formatTomorrowAppointmentsList(data.list);
+  if (!data.list.length) {
+    return `📅 ${data.date} (IST)\n\n${listText}`;
+  }
+  let msg = `📅 Tomorrow (${data.date} IST)\n\n${listText}`;
+  msg += `\n\nTotal: ${data.list.length}`;
   return msg.slice(0, 4000);
+}
+
+async function fetchWeekConfirmedAppointments() {
+  const today = todayYmdIst();
+  if (!today) return null;
+  const bounds = weekBoundsYmdIst(today);
+  if (!bounds) return null;
+  const list = await Appointment.find({
+    date: { $gte: bounds.start, $lte: bounds.end },
+    status: { $in: ['confirmed'] },
+  })
+    .sort({ date: 1, time: 1 })
+    .lean();
+  return { ...bounds, list };
+}
+
+function formatWeekAppointmentsList(list) {
+  if (!list.length) return 'No confirmed appointments this week.';
+  const byDate = new Map();
+  list.forEach((a) => {
+    if (!byDate.has(a.date)) byDate.set(a.date, []);
+    byDate.get(a.date).push(a);
+  });
+  const lines = [];
+  byDate.forEach((appts, date) => {
+    lines.push(formatWeekdayShortDateIst(date));
+    appts.forEach((a) => {
+      lines.push(` ${a.time} — ${a.name}`);
+    });
+  });
+  return lines.join('\n').slice(0, 1024);
+}
+
+/** Appointment list string for weeks_appointment template body {{2}}. */
+async function buildWeekAppointmentsList() {
+  const data = await fetchWeekConfirmedAppointments();
+  if (!data) return 'Could not resolve this week’s dates.';
+  return formatWeekAppointmentsList(data.list);
 }
 
 async function sendTodayManageList(waId) {
@@ -774,4 +831,7 @@ async function handleDoctorAction({ waId, event, session }) {
 module.exports = {
   sendDoctorMainMenu,
   handleDoctorAction,
+  buildTomorrowAppointmentsMessage,
+  buildTomorrowAppointmentsList,
+  buildWeekAppointmentsList,
 };
