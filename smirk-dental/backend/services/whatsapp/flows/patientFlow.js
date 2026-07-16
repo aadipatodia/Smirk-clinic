@@ -104,7 +104,7 @@ async function sendTimeChunk(waId, slots, offset, opts = {}) {
     '⏸️ Break: 2:00–3:00 PM — no appointments in that window.';
   await sendListMessage(
     waId,
-    `Available times (tap one):\n,
+    `Available times (tap one):\n${breakNote}`,
     'Pick time',
     rows,
     'Select time'
